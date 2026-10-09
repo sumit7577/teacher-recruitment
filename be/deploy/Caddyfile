@@ -1,0 +1,53 @@
+# Caddy gets the certificate from Let's Encrypt on first boot and renews it
+# without being asked. That is the whole of "https certificate" in the proposal.
+#
+# Everything is one origin. The browser calls /v1/... on the same host it loaded
+# the page from, so there is no CORS preflight on every request and no second
+# certificate to forget about.
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Uploaded files: CVs, ID proofs, certificates, logos.
+	#
+	# These are served directly rather than through Django, which is what makes
+	# them fast and also what makes their addresses the only thing protecting
+	# them. That is why `app/uploads.py` puts secrets.token_hex(4) in every
+	# path — the directory is unguessable and never listed. Do not add a
+	# `browse` directive here.
+	handle /media/* {
+		root * /srv
+		file_server
+	}
+
+	# Django: the API, the admin, and whitenoise's static files.
+	handle /v1/* {
+		reverse_proxy be:8000
+	}
+	handle /admin* {
+		reverse_proxy be:8000
+	}
+	handle /static/* {
+		reverse_proxy be:8000
+	}
+
+	# Everything else is the website.
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+}

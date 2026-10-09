@@ -1,0 +1,28 @@
+# Django + DRF. Pinned to the same major line as allcoachingAdmin so the
+# patterns carry over exactly; 5.0 LTS is the next step and not a day-one one.
+Django==4.2.23
+djangorestframework==3.15.2
+django-cors-headers==4.7.0
+django-filter==24.3
+
+# Postgres. psycopg2-binary rather than psycopg2 so a deploy needs no compiler.
+psycopg2-binary==2.9.10
+
+# Images — ImageField refuses to validate without it.
+pillow==11.1.0
+
+# Serving STATIC_ROOT under gunicorn once DEBUG is off (see MIDDLEWARE).
+whitenoise==6.8.2
+
+# Prefixed UUID v7 primary keys (app/public_id.py). Drops out when Python 3.14
+# ships uuid.uuid7() in the stdlib — the wire format is identical, no migration.
+uuid_utils==0.10.0
+
+# Outbound HTTP: the SMS gateway.
+requests==2.32.3
+
+# Push, and Google sign-in token verification.
+firebase-admin==6.6.0
+google-auth==2.38.0
+
+gunicorn==23.0.0

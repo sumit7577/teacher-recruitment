@@ -1,0 +1,91 @@
+# One server, four containers, as the proposal prices it.
+#
+# Both repositories are cloned side by side on the server:
+#   /srv/jeewan/be   <- this repository (this file is be/deploy/compose.yaml)
+#   /srv/jeewan/web
+# which is why the build contexts below reach out with `../`.
+#
+# Run every command from THIS directory:
+#   docker compose --env-file .env up -d --build
+
+name: jeewan
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No ports. The database is reachable only from the other containers; an
+    # exposed 5432 is how small servers get mined.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  be:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      MEDIA_ROOT: /app/media
+    volumes:
+      - media:/app/media
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    # Migrations run on boot. Safe here because there is one web container and
+    # one developer; the moment there are two, this moves to a release step.
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn -c gunicorn.conf.py recruit.wsgi:application"
+
+  web:
+    build:
+      context: ../../web
+      dockerfile: Dockerfile
+      args:
+        # Empty: the browser calls /v1/... on the same host. See web/Dockerfile.
+        NEXT_PUBLIC_API_BASE: ""
+        NEXT_PUBLIC_SITE_ORIGIN: ${SITE_ORIGIN}
+    restart: unless-stopped
+    environment:
+      # Server components talk to Django inside the compose network, so a page
+      # render never leaves the box and never waits on DNS or TLS.
+      API_BASE_INTERNAL: http://be:8000
+      NEXT_PUBLIC_SITE_ORIGIN: ${SITE_ORIGIN}
+    depends_on:
+      - be
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - media:/srv/media:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - web
+      - be
+
+volumes:
+  pgdata:
+  media:
+  caddydata:
+  caddyconfig:

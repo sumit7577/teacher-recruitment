@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+env/
+venv/
+
+# Secrets. The whole reason this file exists: allcoaching's Razorpay secret, SMS
+# key and FTP password are in its git history forever, and deleting the line did
+# not unpublish them.
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+
+# Uploaded CVs, certificates and ID proofs. Never in git — this is other
+# people's personal data and a repo is copied to laptops.
+media/
+
+.DS_Store
+.idea/
+.vscode/

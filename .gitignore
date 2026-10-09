@@ -1,0 +1,42 @@
+# ── OS
+.DS_Store
+
+# ── Secrets. `.env.example` is committed on purpose; a real .env never is.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── Python / Django (be)
+__pycache__/
+*.py[cod]
+venv/
+env/
+.venv/
+db.sqlite3
+media/
+staticfiles/
+
+# ── Node / Next (web)
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+npm-debug.log*
+
+# ── Client-facing business material. This repo is the CODE.
+# The proposal carries commercial terms and the demo/notes are the sales
+# material behind them — none of it belongs in a repo that may be public or
+# handed to the client's own developers later. They stay on disk, in
+# ~/code/bello/recruitment/, which is where Bello keeps every client's set.
+proposal/
+demo/
+notes/
+
+# ── The be/ and web/ histories, archived when they were folded into this
+# monorepo. Kept on disk so nothing is lost; `mv be/.git-archive be/.git`
+# brings that repo back. Never committed — it is a git database, not source.
+.git-archive/
