@@ -93,7 +93,7 @@ export default async function HomePage() {
             </p>
           </Column>
 
-          <Row className="grid gap-4 sm:grid-cols-3">
+          <Row className="grid gap-4 grid-cols-1 sm:grid-cols-3">
             {[
               {
                 Icon: AcademicCapIcon,
@@ -138,7 +138,7 @@ export default async function HomePage() {
                 See all {live} <ArrowRightIcon aria-hidden className="h-4 w-4" />
               </Link>
             </Row>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               {cards.map((vacancy) => (
                 <VacancyCard key={vacancy.id} vacancy={vacancy} />
               ))}

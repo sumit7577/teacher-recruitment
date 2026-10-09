@@ -195,8 +195,18 @@
   .btn-ghost { background: transparent; color: var(--ink-2); }
   .btn-ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--ink-1); }
 
+  /* A chip never wraps — that is the point of it — so without a width cap a long
+     label just runs off the screen and takes the page's horizontal scroll with
+     it. "Leadership — Principal, Vice Principal, Coordinator" did exactly that
+     on the board at 390px, and a school is free to type a subject just as long.
+     inline-block rather than inline-flex because text-overflow does not apply to
+     the anonymous flex item that bare text becomes: inline-flex clips mid-word
+     and looks like a bug, inline-block gives the ellipsis. The one chip with an
+     icon in it re-enables flex with a utility, which wins from the later layer. */
   .chip {
-    display: inline-flex;
+    display: inline-block;
+    max-width: 100%;
+    vertical-align: middle;
     align-items: center;
     gap: 0.375rem;
     border-radius: 999px;
@@ -207,6 +217,8 @@
     font-weight: 500;
     color: var(--ink-2);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .chip-accent { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
   .chip-ok     { background: var(--ok-soft);     border-color: transparent; color: var(--ok); }

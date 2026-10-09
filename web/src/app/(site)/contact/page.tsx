@@ -35,7 +35,7 @@ export default async function ContactPage({
         </p>
       </Column>
 
-      <Row className="flex-col items-start gap-8 lg:flex-row">
+      <Row className="flex-col gap-8 lg:flex-row lg:items-start">
         <Column className="w-full gap-4 lg:w-72">
           {settings?.phone ? (
             <Detail Icon={PhoneIcon} label="Phone" value={settings.phone} href={`tel:${settings.phone}`} />

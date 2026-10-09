@@ -160,7 +160,7 @@ export default function VacancyForm({
   }, [draft, facets, institutionName, institutionInitials]);
 
   return (
-    <Row className="flex-col items-start gap-6 lg:flex-row">
+    <Row className="flex-col gap-6 lg:flex-row lg:items-start">
       <Column className="min-w-0 flex-1 gap-5">
         <Column className="card gap-4 p-4 sm:p-5">
           <h2 className="font-display text-base font-bold text-ink-1">The post</h2>

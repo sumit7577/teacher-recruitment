@@ -62,7 +62,7 @@ export default async function InstitutionsPage() {
         <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
           <Column className="gap-7">
             <h2 className="font-display text-2xl font-extrabold text-ink-1 sm:text-3xl">What we do</h2>
-            <Row className="grid gap-4 sm:grid-cols-2">
+            <Row className="grid gap-4 grid-cols-1 sm:grid-cols-2">
               {services.map((service) => {
                 const Icon = ICONS[service.icon] ?? UserGroupIcon;
                 return (
@@ -115,7 +115,7 @@ export default async function InstitutionsPage() {
       ) : null}
 
       <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6">
-        <Row className="grid gap-4 sm:grid-cols-3">
+        <Row className="grid gap-4 grid-cols-1 sm:grid-cols-3">
           {[
             {
               title: "Verified before you meet anyone",

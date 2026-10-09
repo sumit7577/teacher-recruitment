@@ -59,7 +59,7 @@ export default function JobFilters({ facets }: { facets: VacancyFacets | null })
               key={key}
               type="button"
               onClick={() => set(key, "")}
-              className="chip chip-accent hover:opacity-80"
+              className="chip chip-accent inline-flex items-center hover:opacity-80"
             >
               {params.get(key)}
               <XMarkIcon aria-hidden className="h-3.5 w-3.5" />

@@ -99,7 +99,7 @@ export default function TeacherDashboard() {
         </Column>
       ) : null}
 
-      <Row className="grid gap-4 sm:grid-cols-3">
+      <Row className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <StatCard
           label="Matching vacancies"
           value={matching.data?.count ?? "—"}

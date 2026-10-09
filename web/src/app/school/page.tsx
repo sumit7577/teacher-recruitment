@@ -31,7 +31,7 @@ export default function SchoolDashboard() {
         <>
           <VerificationBanner school={dashboard.data.school} />
 
-          <Row className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Row className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Live vacancies"
               value={dashboard.data.counts.live_vacancies}

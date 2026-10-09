@@ -1,5 +1,7 @@
 import React from "react";
 
+import { hasBaseDirection, hasGridDisplay } from "./layout";
+
 interface RowProps {
   children?: React.ReactNode;
   className?: string;
@@ -7,15 +9,13 @@ interface RowProps {
   [key: string]: unknown;
 }
 
-function hasGridDisplay(className: string): boolean {
-  return className.split(/\s+/).some(
-    (t) => t === "grid" || t === "inline-grid" || /^[a-z]+:grid$/.test(t) || /^[a-z]+:inline-grid$/.test(t),
-  );
-}
-
-/** A horizontal flex container. See Column for why the grid check exists. */
+/** A horizontal flex container. See `layout.ts` for why the two checks exist. */
 const Row: React.FC<RowProps> = ({ children, className = "", as: Tag = "div", ...props }) => {
-  const base = hasGridDisplay(className) ? "" : "flex flex-row";
+  const base = hasGridDisplay(className)
+    ? ""
+    : hasBaseDirection(className)
+      ? "flex"
+      : "flex flex-row";
   return (
     <Tag className={`${base} ${className}`.trim()} {...props}>
       {children}

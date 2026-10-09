@@ -92,7 +92,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         </p>
       </Column>
 
-      <Row className="flex-col items-start gap-7 lg:flex-row">
+      <Row className="flex-col gap-7 lg:flex-row lg:items-start">
         {/* Filters on the left, as in the signed-off demo. */}
         <aside className="card w-full shrink-0 p-4 lg:sticky lg:top-20 lg:w-64">
           <JobFilters facets={facets} />

@@ -30,7 +30,7 @@ export default async function AboutPage() {
       </Column>
 
       {settings?.stats?.length ? (
-        <Row className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Row className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {settings.stats.map((stat) => (
             <Column key={stat.label} className="card gap-1 p-5">
               <span className="font-display text-2xl font-extrabold text-accent">{stat.value}</span>
@@ -51,7 +51,7 @@ export default async function AboutPage() {
               A named consultant per account, not a shared inbox.
             </p>
           </Column>
-          <Row className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Row className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {team.map((member) => (
               <Column key={member.id} className="card gap-3 p-5">
                 {member.photo_url ? (

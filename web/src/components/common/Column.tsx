@@ -1,5 +1,7 @@
 import React from "react";
 
+import { hasBaseDirection, hasGridDisplay } from "./layout";
+
 interface ColumnProps {
   children?: React.ReactNode;
   className?: string;
@@ -11,18 +13,14 @@ interface ColumnProps {
  * A vertical flex container. Carried over from allcoaching-educator so the
  * layout vocabulary is the same in both codebases.
  *
- * Skips its own `flex flex-col` when the caller is using it as a grid: two
- * conflicting `display` rules on one element make width-stretching unreliable
- * across browsers.
+ * See `layout.ts` for why it inspects the caller's className.
  */
-function hasGridDisplay(className: string): boolean {
-  return className.split(/\s+/).some(
-    (t) => t === "grid" || t === "inline-grid" || /^[a-z]+:grid$/.test(t) || /^[a-z]+:inline-grid$/.test(t),
-  );
-}
-
 const Column: React.FC<ColumnProps> = ({ children, className = "", as: Tag = "div", ...props }) => {
-  const base = hasGridDisplay(className) ? "" : "flex flex-col";
+  const base = hasGridDisplay(className)
+    ? ""
+    : hasBaseDirection(className)
+      ? "flex"
+      : "flex flex-col";
   return (
     <Tag className={`${base} ${className}`.trim()} {...props}>
       {children}
