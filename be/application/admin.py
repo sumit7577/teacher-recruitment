@@ -1,9 +1,10 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin, TabularInline
 
 from application.models import Application, ApplicationEvent, DemoClass, Offer
 
 
-class EventInline(admin.TabularInline):
+class EventInline(TabularInline):
     model = ApplicationEvent
     extra = 0
     # Append-only — the log is only worth keeping if it cannot be edited after
@@ -12,13 +13,13 @@ class EventInline(admin.TabularInline):
     can_delete = False
 
 
-class DemoInline(admin.TabularInline):
+class DemoInline(TabularInline):
     model = DemoClass
     extra = 0
 
 
 @admin.register(Application)
-class ApplicationAdmin(admin.ModelAdmin):
+class ApplicationAdmin(ModelAdmin):
     list_display = ("teacher", "vacancy", "stage", "consultant", "applied_at", "stage_changed_at")
     list_filter = ("stage",)
     search_fields = ("teacher__user__name", "teacher__user__phone", "vacancy__title")
@@ -27,14 +28,14 @@ class ApplicationAdmin(admin.ModelAdmin):
 
 
 @admin.register(DemoClass)
-class DemoClassAdmin(admin.ModelAdmin):
+class DemoClassAdmin(ModelAdmin):
     list_display = ("application", "scheduled_at", "topic", "grade", "status", "rating")
     list_filter = ("status", "mode")
     search_fields = ("topic", "application__teacher__user__name")
 
 
 @admin.register(Offer)
-class OfferAdmin(admin.ModelAdmin):
+class OfferAdmin(ModelAdmin):
     list_display = ("application", "salary_lpa", "joining_date", "status", "sent_at")
     list_filter = ("status",)
     search_fields = ("application__teacher__user__name",)

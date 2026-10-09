@@ -18,7 +18,26 @@ import {
  * would go out unauthenticated, which is the kind of bug that looks like a
  * permissions problem.
  */
-export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000").replace(/\/$/, "");
+/**
+ * Where the browser sends its requests.
+ *
+ * **An empty string is a real answer, not a missing one** — it means "same
+ * origin as the page", which is how production is deployed: Caddy routes /v1/*
+ * to Django on the host that served the page, so there is no CORS and one
+ * certificate. `||` cannot express that, because "" is falsy and would take the
+ * localhost fallback instead. It did: the production bundle was built with
+ * NEXT_PUBLIC_API_BASE="" and shipped `http://localhost:8000` baked in, so
+ * every signed-in page on the server failed CORS while the server-rendered
+ * public pages, which never touch this file, looked fine.
+ *
+ * So the fallback applies only when the variable is genuinely unset, which is
+ * the local-development case. Next inlines this at BUILD time, so changing it
+ * means rebuilding the image, not restarting it.
+ */
+const CONFIGURED_API_BASE = process.env.NEXT_PUBLIC_API_BASE;
+export const API_BASE = (
+  CONFIGURED_API_BASE === undefined ? "http://localhost:8000" : CONFIGURED_API_BASE
+).replace(/\/$/, "");
 
 /** One signed-in session per browser, under one key.
  *

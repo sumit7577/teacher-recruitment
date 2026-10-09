@@ -6,12 +6,13 @@ look at a row when something has gone wrong.
 """
 
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from user.models import AuthToken, User
 
 
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(ModelAdmin):
     list_display = ("name", "phone", "email", "roles_display", "is_staff_member", "is_active", "date_joined")
     list_filter = ("is_staff_member", "is_active", "date_joined")
     search_fields = ("name", "phone", "email")
@@ -23,7 +24,7 @@ class UserAdmin(admin.ModelAdmin):
 
 
 @admin.register(AuthToken)
-class AuthTokenAdmin(admin.ModelAdmin):
+class AuthTokenAdmin(ModelAdmin):
     list_display = ("user", "role", "device", "created", "last_used_at")
     list_filter = ("role",)
     readonly_fields = ("id", "key_hash", "created", "last_used_at")

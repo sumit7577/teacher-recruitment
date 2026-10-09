@@ -1,10 +1,11 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from vacancy.models import Vacancy
 
 
 @admin.register(Vacancy)
-class VacancyAdmin(admin.ModelAdmin):
+class VacancyAdmin(ModelAdmin):
     list_display = ("title", "institution_name", "post", "city", "status", "published_at", "view_count")
     list_filter = ("status", "post", "institution_type", "board", "is_featured", "source")
     search_fields = ("title", "subject", "school_name", "city", "school__name")
