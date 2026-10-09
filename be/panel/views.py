@@ -143,3 +143,63 @@ class StaffListView(APIView):
             {"id": member.id, "name": member.name or member.phone, "phone": member.phone}
             for member in staff
         ])
+
+
+class PasswordResetView(APIView):
+    """POST v1/panel/dashboard/password-reset/ — the office hands out a new password.
+
+    With no SMS gateway there is no self-service "forgot password", so this is
+    the whole recovery path: a teacher rings, the office confirms who they are
+    the same way it already does for their certificates, and reads out a
+    temporary password.
+
+    The password is generated here rather than typed by staff, because a human
+    choosing one under time pressure picks the school's name. It is shown once,
+    in the response, and never stored in readable form — `set_password` hashes
+    it, so asking again produces a new one rather than revealing the old.
+
+    Staff accounts are excluded on purpose. Panel access is granted by
+    `manage.py make_staff` on the server, and an endpoint that could reset a
+    colleague's password is an endpoint that can take over the panel.
+    """
+
+    authentication_classes = [CustomAuthentication]
+    permission_classes = [IsStaff]
+
+    def post(self, request):
+        import secrets
+
+        from user.models import User
+        from user.service import is_valid_phone, normalise_phone
+
+        from app.responses import fail
+
+        phone = normalise_phone(request.data.get("phone"))
+        if not is_valid_phone(phone):
+            return fail("Enter a 10-digit mobile number.", status_code=400)
+
+        user = User.objects.filter(phone=phone).first()
+        if user is None:
+            return fail("No account on that number.", code="not_found", status_code=404)
+        if user.is_staff_member:
+            return fail(
+                "Panel accounts are reset on the server, not from here.",
+                code="staff_account", status_code=403,
+            )
+
+        # Unambiguous over the phone: no l/1, no O/0, and spoken in two halves.
+        alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+        temporary = "".join(secrets.choice(alphabet) for _ in range(4)) + "-" + \
+                    "".join(secrets.choice(alphabet) for _ in range(4))
+        user.set_password(temporary)
+        user.save(update_fields=["password"])
+        # Every existing session dies with the password. A reset usually means
+        # the account is in the wrong hands, and leaving the old tokens alive
+        # would make the reset cosmetic.
+        user.tokens.all().delete()
+
+        return ok("Password reset. Read this out — it is not shown again.", {
+            "phone": user.phone,
+            "name": user.name,
+            "temporary_password": temporary,
+        })

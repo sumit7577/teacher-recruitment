@@ -14,15 +14,21 @@ pillow==11.1.0
 # Serving STATIC_ROOT under gunicorn once DEBUG is off (see MIDDLEWARE).
 whitenoise==6.8.2
 
+# The admin's skin. Same version as allcoachingAdmin, so what is learned about
+# one applies to the other. It is templates and static files only — no models,
+# no migration, and removing it leaves a working stock admin behind.
+django-unfold==0.89.0
+
 # Prefixed UUID v7 primary keys (app/public_id.py). Drops out when Python 3.14
 # ships uuid.uuid7() in the stdlib — the wire format is identical, no migration.
 uuid_utils==0.10.0
 
-# Outbound HTTP: the SMS gateway.
-requests==2.32.3
-
 # Push, and Google sign-in token verification.
 firebase-admin==6.6.0
 google-auth==2.38.0
+# google-auth does NOT declare this, but `google.auth.transport.requests` — the
+# only way to verify a Google id_token — imports it. Dropping it as "unused"
+# builds a clean image in which Google sign-in raises ImportError at runtime.
+requests==2.32.3
 
 gunicorn==23.0.0

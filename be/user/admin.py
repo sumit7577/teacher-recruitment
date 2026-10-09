@@ -7,7 +7,7 @@ look at a row when something has gone wrong.
 
 from django.contrib import admin
 
-from user.models import AuthToken, Otp, User
+from user.models import AuthToken, User
 
 
 @admin.register(User)
@@ -27,10 +27,3 @@ class AuthTokenAdmin(admin.ModelAdmin):
     list_display = ("user", "role", "device", "created", "last_used_at")
     list_filter = ("role",)
     readonly_fields = ("id", "key_hash", "created", "last_used_at")
-
-
-@admin.register(Otp)
-class OtpAdmin(admin.ModelAdmin):
-    list_display = ("phone", "kind", "otp", "attempts", "created")
-    list_filter = ("kind",)
-    search_fields = ("phone",)

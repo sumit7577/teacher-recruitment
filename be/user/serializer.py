@@ -58,16 +58,38 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ("name", "email", "city", "state", "image")
 
 
-class OtpRequestSerializer(serializers.Serializer):
-    phone = PhoneField()
-    role = serializers.ChoiceField(choices=ROLE_CHOICES, default="teacher")
+def _validated_password(value):
+    """Django's own password rules, surfaced as a DRF field error.
+
+    Run here rather than in the view so signup and password-change get the same
+    answer — "this password is too common" has to mean the same thing in both.
+    """
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError as DjangoValidationError
+
+    try:
+        validate_password(value)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError(list(exc.messages))
+    return value
 
 
-class OtpVerifySerializer(serializers.Serializer):
+class SignUpSerializer(serializers.Serializer):
+    """Creating an account: a number, a password, and which door you came in by.
+
+    `name` is optional because the signup wizard asks for it on the next step
+    along with everything else about the profile; taking it here when it is
+    offered just saves asking twice.
+    """
+
     phone = PhoneField()
-    otp = serializers.CharField(max_length=6)
+    password = serializers.CharField(min_length=8, max_length=128, trim_whitespace=False)
+    name = serializers.CharField(max_length=120, required=False, allow_blank=True)
     role = serializers.ChoiceField(choices=ROLE_CHOICES, default="teacher")
     device = serializers.CharField(max_length=120, required=False, allow_blank=True)
+
+    def validate_password(self, value):
+        return _validated_password(value)
 
 
 class PasswordLoginSerializer(serializers.Serializer):
@@ -78,25 +100,19 @@ class PasswordLoginSerializer(serializers.Serializer):
 
 
 class PasswordSetSerializer(serializers.Serializer):
-    """Setting a password for the first time, or changing one.
+    """Changing your own password.
 
-    `current_password` is required only when the account already has one.
-    Requiring it unconditionally would lock out every teacher who has only ever
-    used one-time codes, which is most of them.
+    `current_password` is required only when the account already has one. It
+    stays optional because the office can hand out a temporary password for an
+    account that has none — see `panel`'s reset — and that account has to be
+    able to set its own on first use.
     """
 
     current_password = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False)
     new_password = serializers.CharField(min_length=8, trim_whitespace=False)
 
     def validate_new_password(self, value):
-        from django.contrib.auth.password_validation import validate_password
-        from django.core.exceptions import ValidationError as DjangoValidationError
-
-        try:
-            validate_password(value)
-        except DjangoValidationError as exc:
-            raise serializers.ValidationError(list(exc.messages))
-        return value
+        return _validated_password(value)
 
 
 class GoogleLoginSerializer(serializers.Serializer):

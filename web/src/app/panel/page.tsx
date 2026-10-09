@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import Column from "@/components/common/Column";
 import Row from "@/components/common/Row";
+import PasswordResetCard from "@/components/workspace/PasswordResetCard";
 import QueryState from "@/components/workspace/QueryState";
 import StageBadge from "@/components/workspace/StageBadge";
 import StatCard from "@/components/workspace/StatCard";
@@ -212,6 +213,8 @@ export default function PanelDashboard() {
               ))}
             </Column>
           </Column>
+
+          <PasswordResetCard />
         </>
       ) : null}
     </QueryState>

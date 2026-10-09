@@ -531,3 +531,10 @@ export interface SchoolDashboardResp {
 }
 
 export interface StaffMember { id: string; name: string; phone: string }
+
+/** What the office reads out after a reset. Shown once and never stored. */
+export interface PasswordReset {
+  phone: string;
+  name: string;
+  temporary_password: string;
+}

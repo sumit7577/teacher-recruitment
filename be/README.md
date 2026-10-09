@@ -17,8 +17,8 @@ DJANGO_DEBUG=true .venv/bin/python manage.py runserver 8000
 
 `http://localhost:8000/healthz/` should answer `{"status":"true","message":"ok"}`.
 
-Signing in locally needs no SMS account: with `DJANGO_DEBUG=true` the one-time
-code is printed to the server log.
+Signing in locally needs no accounts and no gateway: create a user with a
+password and sign in with it. The office resets a forgotten one from the panel.
 
 ## The API, by audience
 

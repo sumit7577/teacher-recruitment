@@ -18,20 +18,9 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 
 const PHONE = "9123400001";
+const PASSWORD = "E2ePass-2026";
 const BE = new URL("../../be/", import.meta.url).pathname;
 const fails = [];
-
-function otpFor(phone, kind) {
-  const out = execFileSync(`${BE}/.venv/bin/python`, ["-c", `
-import os, django
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","recruit.settings")
-django.setup()
-from user.models import Otp
-row = Otp.objects.filter(phone="${phone}", kind="${kind}").first()
-print(row.otp if row else "")
-`], { cwd: BE, encoding: "utf-8" });
-  return out.trim();
-}
 
 function reset(phone) {
   execFileSync(`${BE}/.venv/bin/python`, ["-c", `
@@ -68,14 +57,8 @@ try {
     (await page.textContent("body")).includes("Your next post, without the cold calling"));
 
   await page.fill("#phone", PHONE);
-  await page.getByRole("button", { name: "Send me a code" }).click();
-  await page.waitForSelector("#otp", { timeout: 15000 });
-  check("code step reached", true);
-
-  const code = otpFor(PHONE, "teacher");
-  check("backend issued a code", /^\d{6}$/.test(code), code);
-  await page.fill("#otp", code);
-  await page.getByRole("button", { name: "Verify and continue" }).click();
+  await page.fill("#password", PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
 
   await page.waitForSelector("text=A little about your teaching", { timeout: 15000 });
   check("profile step reached", true);

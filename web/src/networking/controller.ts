@@ -21,6 +21,7 @@ import type {
   SchoolResp,
   SignInResp,
   SiteSettings,
+  PasswordReset,
   StaffMember,
   TeacherDocumentResp,
   TeacherExperienceResp,
@@ -84,14 +85,13 @@ const sendEnquiry = async (form: FormData): Promise<Envelope<never>> =>
 
 // ── auth ────────────────────────────────────────────────────────────────────
 
-const requestOtp = async (phone: string, role: Role): Promise<Envelope<never>> =>
-  (await client.post(`${API_BASE}/v1/auth/otp/`, { phone, role })).data;
-
-/** Verifies the code AND stores the session — the two are one step on purpose.
+/** Creates the account AND stores the session — the two are one step on purpose.
  *  A caller that forgets the second half leaves the app holding a token it never
  *  sends, which presents as "signed in, but everything 403s". */
-const verifyOtp = async (phone: string, otp: string, role: Role, device = ""): Promise<SignInResp> => {
-  const body = (await client.post(`${API_BASE}/v1/auth/otp/verify`, { phone, otp, role, device })).data;
+const signUp = async (
+  phone: string, password: string, role: Role, name = "", device = "",
+): Promise<SignInResp> => {
+  const body = (await client.post(`${API_BASE}/v1/auth/signup`, { phone, password, role, name, device })).data;
   const data = unwrap<SignInResp>(body);
   writeSession({ key: data.key, role: data.role, user: data.user, needs_profile: data.needs_profile });
   return data;
@@ -279,6 +279,12 @@ const getDashboard = async (): Promise<DashboardResp> =>
 const getStaff = async (): Promise<StaffMember[]> =>
   unwrap((await client.get(`${API_BASE}/v1/panel/dashboard/staff/`)).data);
 
+/** The office hands out a new password over the phone. Returns it once — it is
+ *  hashed on the way in, so asking again mints a new one rather than showing
+ *  the old. This is the whole password-recovery path; there is no SMS. */
+const resetUserPassword = async (phone: string): Promise<PasswordReset> =>
+  unwrap((await client.post(`${API_BASE}/v1/panel/dashboard/password-reset/`, { phone })).data);
+
 const panelVacancies = async (query: VacancyQuery = {}): Promise<Paginated<VacancyPanel>> =>
   (await client.get(`${API_BASE}/v1/panel/vacancies/`, { params: clean(query as Params) })).data;
 
@@ -421,7 +427,7 @@ const ApiController = {
   // public
   getSite, getPage, getVacancies, getVacancy, getVacancyFacets, sendEnquiry,
   // auth
-  requestOtp, verifyOtp, signInWithPassword, setPassword, signInWithGoogle, linkGoogle,
+  signUp, signInWithPassword, setPassword, signInWithGoogle, linkGoogle,
   getMe, updateMe, signOut, readSession,
   // teacher
   getTeacherProfile, createTeacherProfile, updateTeacherProfile,
@@ -435,7 +441,7 @@ const ApiController = {
   getSchoolVacancies, getSchoolVacancy, createSchoolVacancy, updateSchoolVacancy, schoolVacancyAction,
   getApplicants, getApplicant, setApplicantStage, bookDemoClass, makeOffer,
   // panel
-  getDashboard, getStaff,
+  getDashboard, getStaff, resetUserPassword,
   panelVacancies, panelVacancy, panelCreateVacancy, panelUpdateVacancy, panelVacancyAction,
   panelApplications, panelApplication, panelUpdateApplication, panelSetStage,
   panelBookDemo, panelUpdateDemo, panelMakeOffer, panelDemoCalendar,

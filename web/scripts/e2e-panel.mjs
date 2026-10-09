@@ -13,6 +13,7 @@ const pw = await import(new URL("../node_modules/playwright-core/index.js", impo
 const chromium = pw.chromium ?? pw.default?.chromium;
 const { execFileSync } = await import("node:child_process");
 
+const PASSWORD = "E2ePass-2026";
 const STAFF_PHONE = "9876500000";
 const TEACHER_PHONE = "9123400001";
 const BE = new URL("../../be/", import.meta.url).pathname;
@@ -27,11 +28,6 @@ ${code}
 `], { cwd: BE, encoding: "utf-8" }).trim();
 }
 
-const otpFor = (phone, kind) =>
-  py(`from user.models import Otp
-row = Otp.objects.filter(phone="${phone}", kind="${kind}").first()
-print(row.otp if row else "")`);
-
 function check(label, ok, extra = "") {
   console.log((ok ? "  ok   " : "  FAIL ") + label + (!ok && extra ? `  ${extra}` : ""));
   if (!ok) fails.push(label);
@@ -39,7 +35,9 @@ function check(label, ok, extra = "") {
 
 // A staff account, and an unverified institution with a draft waiting on it.
 py(`from user.models import User
-User.objects.update_or_create(phone="${STAFF_PHONE}", defaults={"name": "Office", "is_staff_member": True})
+u, _ = User.objects.update_or_create(phone="${STAFF_PHONE}", defaults={"name": "Office", "is_staff_member": True})
+u.set_password("${PASSWORD}")
+u.save(update_fields=["password"])
 print("staff ready")`);
 const setup = py(`from app import taxonomy
 from school.models import School
@@ -80,9 +78,7 @@ try {
   check("the staff door has no role switch", !loginBody.includes("I am hiring"));
   check("it says office sign-in", loginBody.includes("Office sign-in"));
   await page.fill("#phone", STAFF_PHONE);
-  await page.getByRole("button", { name: "Send me a code" }).click();
-  await page.waitForSelector("#otp", { timeout: 15000 });
-  await page.fill("#otp", otpFor(STAFF_PHONE, "staff"));
+  await page.fill("#password", PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/panel/, { timeout: 15000 });
   await page.waitForTimeout(2000);

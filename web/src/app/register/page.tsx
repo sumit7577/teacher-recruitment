@@ -28,7 +28,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
   return (
     <RegisterForm
       initialRole={role}
-      initialStep={one(params.step) === "profile" ? "profile" : "phone"}
+      initialStep={one(params.step) === "profile" ? "profile" : "account"}
       facets={facets}
     />
   );

@@ -1,9 +1,15 @@
 """Sign-in and identity, for all three audiences.
 
 "One door, two sides of the same hire." Every endpoint here takes a `role`, and
-the role decides what the token opens and which questions get asked next. Three
-ways in — a one-time code, a password, or Google — and all three land in the same
-`_sign_in`, so the response the client parses never depends on how they arrived.
+the role decides what the token opens and which questions get asked next. Two
+ways in — a password, or Google — and both land in the same `_sign_in`, so the
+response the client parses never depends on how they arrived.
+
+There is deliberately no one-time code. It needed a DLT-registered SMS sender
+the client does not have, and an account nobody can sign into because an SMS
+gateway is unconfigured is worse than one with a password to remember. A
+forgotten password is reset by the office from the panel, which is the same desk
+that already verifies every teacher's certificates.
 """
 
 from django.db import transaction
@@ -16,22 +22,15 @@ from rest_framework.views import APIView
 from app.responses import fail, ok
 from user import google_auth
 from user.auth import CustomAuthentication, IsSignedIn
-from user.models import AuthToken, Otp, User
+from user.models import AuthToken, User
 from user.serializer import (
     GoogleLoginSerializer,
-    OtpRequestSerializer,
-    OtpVerifySerializer,
     PasswordLoginSerializer,
     PasswordSetSerializer,
+    SignUpSerializer,
     UserReadSerializer,
     UserSerializer,
 )
-from user.service import issue_otp, verify_otp
-
-# Asking for a code again before this has passed re-sends the SAME code rather
-# than minting a new one. Minting a new one invalidates the SMS that is probably
-# already on its way, which reads to the user as "the code does not work".
-OTP_RESEND_SECONDS = 60
 
 
 def _profile_summary(user, role: str) -> dict:
@@ -78,75 +77,51 @@ def _sign_in(user, role: str, device: str = "") -> dict:
     }
 
 
-class OtpRequestView(APIView):
-    """POST v1/auth/otp/ — send a one-time code.
+class SignUpView(APIView):
+    """POST v1/auth/signup — a number and a password, in exchange for a token.
 
-    Answers the same way whether or not the number holds an account. A different
-    answer for a number we know makes this endpoint a way to ask "is this
-    teacher registered with you", which is not ours to tell.
-    """
-
-    authentication_classes = []
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = OtpRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        phone = serializer.validated_data["phone"]
-        role = serializer.validated_data["role"]
-
-        # Staff accounts are created by the office, never by asking for a code.
-        if role == "staff" and not User.objects.filter(phone=phone, is_staff_member=True).exists():
-            return fail("This number does not have panel access.", status_code=403)
-
-        existing = Otp.objects.filter(phone=phone, kind=role).first()
-        if existing and (timezone.now() - existing.created).total_seconds() < OTP_RESEND_SECONDS:
-            return ok("We have already sent a code. It can take a minute to arrive.")
-
-        _, sent = issue_otp(phone, kind=role)
-        if not sent:
-            return fail(
-                "We could not send the code just now. Try again in a moment, "
-                "or call the office.",
-                code="sms_failed", status_code=502,
-            )
-        return ok(f"Code sent to {phone}.")
-
-
-class OtpVerifyView(APIView):
-    """POST v1/auth/otp/verify — the code, in exchange for a token.
-
-    Creates the `User` if the number is new, because at this point the number is
-    proved and that is all a User row is. It does NOT create the role profile:
+    Creates the `User` and nothing else. It does NOT create the role profile:
     what they teach, where, and with what qualification is the signup wizard's
     job, and `needs_profile` in the response is what opens it.
+
+    Unlike sign-in, this one does say when a number is already taken. On a
+    signup form that is unavoidable — whatever the wording, trying to register
+    reveals it — so a vague answer would cost a real person their account and
+    tell an attacker the same thing anyway.
     """
 
     authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = OtpVerifySerializer(data=request.data)
+        serializer = SignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         phone, role = data["phone"], data["role"]
 
-        verify_otp(phone, data["otp"], kind=role)
+        # Panel accounts are made by `manage.py make_staff`, never by signing up.
+        if role == "staff":
+            return fail("Panel accounts are created by the office.", status_code=403)
 
         with transaction.atomic():
-            user, created = User.objects.get_or_create(phone=phone)
-            if role == "staff" and not user.is_staff_member:
-                raise ValidationError({"role": "This number does not have panel access."})
+            if User.objects.filter(phone=phone).exists():
+                raise ValidationError(
+                    {"phone": "That number already has an account. Sign in instead."}
+                )
+            user = User.objects.create(phone=phone, name=data.get("name", ""))
+            user.set_password(data["password"])
+            user.save(update_fields=["password", "name"])
             payload = _sign_in(user, role, data.get("device", ""))
-        payload["is_new"] = created
-        return ok("Signed in.", payload)
+        payload["is_new"] = True
+        return ok("Account created.", payload)
 
 
 class PasswordLoginView(APIView):
-    """POST v1/auth/password — for whoever would rather remember one.
+    """POST v1/auth/password — the way in.
 
     One message for "no such number", "no password set" and "wrong password", so
-    the endpoint cannot be used to ask which numbers hold accounts.
+    the endpoint cannot be used to ask which numbers hold accounts. Signing up
+    is the one place that distinction is unavoidable; here it is not.
     """
 
     authentication_classes = []
@@ -157,7 +132,7 @@ class PasswordLoginView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        generic = "That number and password do not match. Try a one-time code instead."
+        generic = "That number and password do not match."
         user = User.objects.filter(phone=data["phone"]).first()
         if user is None or not user.check_password(data["password"]):
             return fail(generic, code="invalid_credentials", status_code=401)

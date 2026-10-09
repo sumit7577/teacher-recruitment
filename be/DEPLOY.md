@@ -123,8 +123,12 @@ in every path, so the address cannot be guessed and the directory is never
 listed. If the client ever asks for documents behind a permission check, that is
 a real change: the file server comes out and the requests go through Django.
 
-**Nobody can sign in until the SMS credentials are in.** `OTP_CONSOLE_FALLBACK`
-defaults to `DEBUG`, which is false in production, so with no `SMS_API_KEY` the
-OTP is never delivered and never printed. For a demo before DLT registration is
-through, put the office number in `OTP_TEST_PHONES` — it skips the gateway and
-accepts `OTP_TEST_CODE`. Clear it before handover.
+**Sign-in is a phone number and a password, and nothing else.** There is no SMS
+and no one-time code, so there is nothing to configure before anyone can sign
+in and no DLT registration on the critical path.
+
+The consequence is that there is no self-service "forgot password" either. The
+recovery path is the office: **Panel → Reset a password**, which generates a
+temporary one, shows it once, and signs that account out everywhere. It is the
+same desk that already verifies every teacher's certificates, so confirming who
+is on the phone is work it already does.

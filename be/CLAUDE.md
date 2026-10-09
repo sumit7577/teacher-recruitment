@@ -19,7 +19,6 @@ ones. Where this repo diverges from allcoaching, §7 says so and why.
 - **Primary keys:** prefixed UUID v7 slugs (`vac_…`, `tch_…`) via `app/public_id.py`
 - **API style:** REST, JSON, `PageNumberPagination` at `PAGE_SIZE = 10`
 - **Uploads:** local filesystem under `MEDIA_ROOT`, served by nginx in production
-- **SMS:** Fast2SMS over DLT (`app/sms.py`) — the sign-in OTP, nothing else
 - **Push:** Firebase Cloud Messaging (`app/fcm.py`)
 - **Sign-in with Google:** `user/google_auth.py`, linked by Google's `sub`
 - **Deploy:** Dockerfile → gunicorn, 3 workers × 3 threads, port 8000
@@ -218,9 +217,11 @@ cp .env.example .env            # fill it in; SQLite until POSTGRES_DB is set
 DJANGO_DEBUG=true .venv/bin/python manage.py runserver 8000
 ```
 
-With no SMS credentials, `OTP_CONSOLE_FALLBACK` (defaults to `DEBUG`) prints the
-code to the log and reports it as sent — otherwise nobody can sign in locally. It
-is never silently on in production.
+Sign-in is a phone number and a password. There is no one-time code: it needed
+a DLT-registered SMS sender the client does not have, and a sign-in box that
+accepts nothing because a gateway is unconfigured is worse than a password to
+remember. A forgotten password is reset by the office — `POST
+v1/panel/dashboard/password-reset/`, surfaced on the panel dashboard.
 
 **Smoke test** — 58 checks over the real URL tree, permissions and serializers:
 

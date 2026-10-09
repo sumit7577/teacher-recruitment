@@ -3,12 +3,12 @@
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 import AuthPanel from "@/components/auth/AuthPanel";
 import { ChipPicker, TagInput } from "@/components/auth/ChipMultiSelect";
-import { OtpField, PhoneField } from "@/components/auth/PhoneOtpFields";
+import { PasswordField, PhoneField } from "@/components/auth/PhoneFields";
 import RoleSwitch from "@/components/auth/RoleSwitch";
 import Column from "@/components/common/Column";
 import Field from "@/components/common/Field";
@@ -19,7 +19,7 @@ import { ClientError } from "@/networking/error-type";
 import { queryClient } from "@/queryClient";
 import type { Choice, VacancyFacets } from "@/networking/types";
 
-type Step = "phone" | "code" | "profile";
+type Step = "account" | "profile";
 
 /**
  * Create an account. Phone first, then the questions that decide what they see.
@@ -28,10 +28,9 @@ type Step = "phone" | "code" | "profile";
  * the four things that decide which vacancies they will ever see. A school is asked
  * for its name, type, board and contact person instead."
  *
- * The phone step comes first for a structural reason: the number is the identity,
- * so it has to be proved before there is an account to attach a profile to. Which
- * is also why someone who signs in with a verified number but no profile lands
- * straight on the profile step — `?step=profile`.
+ * The account step comes first for a structural reason: there has to be a user row
+ * before there is anything to attach a profile to. Which is also why someone who
+ * signs in but has no profile lands straight on the profile step — `?step=profile`.
  */
 export default function RegisterForm({
   initialRole, initialStep, facets,
@@ -58,17 +57,10 @@ export default function RegisterForm({
    * for a signed-out visitor, so acting on the first render would bounce a
    * legitimately signed-in teacher back to the phone step for one frame.
    */
-  const step: Step = rawStep === "profile" && mounted && !session ? "phone" : rawStep;
+  const step: Step = rawStep === "profile" && mounted && !session ? "account" : rawStep;
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [resendIn, setResendIn] = useState(0);
-
-  useEffect(() => {
-    if (!resendIn) return;
-    const timer = window.setTimeout(() => setResendIn((value) => value - 1), 1000);
-    return () => window.clearTimeout(timer);
-  }, [resendIn]);
 
   function fail(error: unknown) {
     if (error instanceof ClientError && error.errors) {
@@ -78,19 +70,14 @@ export default function RegisterForm({
     toast.error(error instanceof Error ? error.message : "That didn't work. Try again.");
   }
 
-  const requestCode = useMutation({
-    mutationFn: () => ApiController.requestOtp(phone, role),
-    onSuccess: () => { setErrors({}); setStep("code"); setResendIn(60); },
-    onError: fail,
-  });
-
-  const verify = useMutation({
-    mutationFn: () => ApiController.verifyOtp(phone, otp, role),
+  const createAccount = useMutation({
+    mutationFn: () => ApiController.signUp(phone, password, role),
     onSuccess: (data) => {
       setErrors({});
       queryClient.clear();
-      // Already has a profile — this was a sign-in, not a sign-up. Send them in
-      // rather than asking questions they have answered.
+      // A fresh account has no profile, so this is all but unreachable — it is
+      // here because `needs_profile` is the server's answer and the client
+      // guessing instead is how the two drift apart.
       if (!data.needs_profile) {
         router.replace(HOME_FOR[data.role]);
         return;
@@ -136,40 +123,35 @@ export default function RegisterForm({
 
           <RoleSwitch
             value={role}
-            onChange={(next) => { setRole(next); setStep("phone"); setErrors({}); }}
+            onChange={(next) => { setRole(next); setStep("account"); setErrors({}); }}
           />
 
           <form
-            className="flex flex-col gap-4"
+            className="card flex flex-col gap-4 p-5"
             onSubmit={(event) => {
               event.preventDefault();
-              if (step === "phone") requestCode.mutate();
-              else verify.mutate();
+              createAccount.mutate();
             }}
           >
             <PhoneField
               value={phone}
               onChange={(value) => { setPhone(value); setErrors({}); }}
-              disabled={step === "code"}
               error={errors.phone}
             />
-            {step === "code" ? (
-              <OtpField
-                value={otp}
-                onChange={(value) => { setOtp(value); setErrors({}); }}
-                error={errors.otp}
-                onResend={() => requestCode.mutate()}
-                resendIn={resendIn}
-              />
-            ) : null}
+            <PasswordField
+              value={password}
+              onChange={(value) => { setPassword(value); setErrors({}); }}
+              error={errors.password}
+              label="Choose a password"
+              autoComplete="new-password"
+              hint="At least 8 characters. You will need it every time you sign in."
+            />
             <button
               type="submit"
               className="btn btn-accent"
-              disabled={requestCode.isPending || verify.isPending || phone.length !== 10}
+              disabled={createAccount.isPending || phone.length !== 10 || password.length < 8}
             >
-              {requestCode.isPending || verify.isPending
-                ? "Please wait…"
-                : step === "phone" ? "Send me a code" : "Verify and continue"}
+              {createAccount.isPending ? "Creating your account…" : "Create account"}
             </button>
           </form>
 

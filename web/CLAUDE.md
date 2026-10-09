@@ -188,7 +188,7 @@ npm install --no-save playwright-core     # drives the system Chrome
 node scripts/e2e-teacher.mjs              # with the API and the site running
 ```
 
-22 checks through a real browser: registering, the OTP, the four matching
+22 checks through a real browser: registering with a password, the four matching
 questions, that a PGT Physics teacher is matched to the PGT Physics post and not to
 an unrelated one, that applying with no CV redirects to the documents section, the
 upload, applying, the application appearing at the right stage, the vacancy then

@@ -51,6 +51,13 @@ USE_X_FORWARDED_HOST = True
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
+    # django-unfold restyles the admin, and it must be listed BEFORE
+    # django.contrib.admin: it works by shadowing admin's own templates, and the
+    # first app in this list wins a template name. Listed after, it loads and
+    # changes nothing, which looks like a broken install.
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -188,24 +195,6 @@ CORS_ALLOW_CREDENTIALS = False
 
 # ── Integrations ────────────────────────────────────────────────────────────
 
-# SMS OTP. Same provider as allcoaching (Fast2SMS); the DLT template id and
-# sender are the client's own once their DLT registration is through.
-SMS_API_URL = env("SMS_API_URL", "https://www.fast2sms.com/dev/bulkV2")
-SMS_API_KEY = env("SMS_API_KEY")
-SMS_SENDER_ID = env("SMS_SENDER_ID", "")
-SMS_TEMPLATE_ID = env("SMS_TEMPLATE_ID", "")
-# Any phone listed here skips the SMS gateway and accepts OTP_TEST_CODE. For
-# Play Store review and for demoing the panel without burning SMS credits.
-OTP_TEST_PHONES = env_list("OTP_TEST_PHONES")
-OTP_TEST_CODE = env("OTP_TEST_CODE", "000000")
-OTP_TTL_SECONDS = int(env("OTP_TTL_SECONDS", "600"))
-# With no SMS credentials, print the code to the log and report it as sent.
-# Without this nobody can sign in on a dev machine, which makes the whole
-# frontend undevelopable. Defaults to DEBUG and is NEVER silently on in
-# production: there, a missing key must surface as "we could not send the code"
-# rather than as a sign-in box that accepts nothing.
-OTP_CONSOLE_FALLBACK = env_bool("OTP_CONSOLE_FALLBACK", DEBUG)
-
 # Firebase Cloud Messaging — new-vacancy and demo-class pushes to the app.
 FCM_CREDENTIALS_FILE = env("FCM_CREDENTIALS_FILE", str(BASE_DIR / "secrets" / "firebase-admin.json"))
 
@@ -232,4 +221,84 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+}
+
+# The admin's skin. Unfold is templates and static files — it owns no models and
+# adds no migration, so taking it out leaves a working stock admin behind.
+#
+# Colours are the brand's, read off the signed-off demo: #F0682B accent on the
+# #14283F deep navy. Unfold wants space-separated RGB rather than hex, because
+# it composes them into Tailwind `rgb(... / <alpha>)` colour functions.
+UNFOLD = {
+    "SITE_TITLE": "Jeewan Sir",
+    "SITE_HEADER": "Jeewan Sir",
+    "SITE_SUBHEADER": "Teacher recruitment",
+    "SITE_URL": "/",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "COLORS": {
+        "primary": {
+            "50": "254 243 236",
+            "100": "253 229 215",
+            "200": "251 202 175",
+            "300": "248 167 127",
+            "400": "244 138 85",
+            "500": "240 104 43",
+            "600": "217 84 28",
+            "700": "180 67 23",
+            "800": "143 53 18",
+            "900": "107 40 14",
+            "950": "61 23 8",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+        # Grouped the way the office works rather than by Django app label,
+        # which is an implementation detail nobody at the firm is paid to know.
+        "navigation": [
+            {
+                "title": "Hiring",
+                "separator": False,
+                "items": [
+                    {"title": "Vacancies", "link": "/admin/vacancy/vacancy/"},
+                    {"title": "Applications", "link": "/admin/application/application/"},
+                    {"title": "Demo classes", "link": "/admin/application/democlass/"},
+                    {"title": "Offers", "link": "/admin/application/offer/"},
+                ],
+            },
+            {
+                "title": "People",
+                "separator": True,
+                "items": [
+                    {"title": "Teachers", "link": "/admin/teacher/teacherprofile/"},
+                    {"title": "Documents", "link": "/admin/teacher/teacherdocument/"},
+                    {"title": "Institutions", "link": "/admin/school/school/"},
+                    {"title": "Accounts", "link": "/admin/user/user/"},
+                ],
+            },
+            {
+                "title": "The website",
+                "separator": True,
+                "items": [
+                    {"title": "Site settings", "link": "/admin/cms/sitesetting/"},
+                    {"title": "Pages", "link": "/admin/cms/page/"},
+                    {"title": "Services", "link": "/admin/cms/service/"},
+                    {"title": "Process steps", "link": "/admin/cms/processstep/"},
+                    {"title": "Testimonials", "link": "/admin/cms/testimonial/"},
+                    {"title": "Team", "link": "/admin/cms/teammember/"},
+                    {"title": "Enquiries", "link": "/admin/cms/enquiry/"},
+                ],
+            },
+            {
+                "title": "Notifications",
+                "separator": True,
+                "items": [
+                    {"title": "Sent", "link": "/admin/notifications/notification/"},
+                    {"title": "Campaigns", "link": "/admin/notifications/pushcampaign/"},
+                    {"title": "Devices", "link": "/admin/notifications/device/"},
+                ],
+            },
+        ],
+    },
 }

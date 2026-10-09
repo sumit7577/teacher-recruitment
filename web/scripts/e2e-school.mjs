@@ -11,6 +11,7 @@ const pw = await import(new URL("../node_modules/playwright-core/index.js", impo
 const chromium = pw.chromium ?? pw.default?.chromium;
 const { execFileSync } = await import("node:child_process");
 
+const PASSWORD = "E2ePass-2026";
 const SCHOOL_PHONE = "9123400002";
 const TEACHER_PHONE = "9123400001";
 const BE = new URL("../../be/", import.meta.url).pathname;
@@ -24,11 +25,6 @@ django.setup()
 ${code}
 `], { cwd: BE, encoding: "utf-8" }).trim();
 }
-
-const otpFor = (phone, kind) =>
-  py(`from user.models import Otp
-row = Otp.objects.filter(phone="${phone}", kind="${kind}").first()
-print(row.otp if row else "")`);
 
 function check(label, ok, extra = "") {
   console.log((ok ? "  ok   " : "  FAIL ") + label + (!ok && extra ? `  ${extra}` : ""));
@@ -63,10 +59,8 @@ try {
   check("the promise panel is the school one",
     (await page.textContent("body")).includes("Screened teachers, not a stack of CVs"));
   await page.fill("#phone", SCHOOL_PHONE);
-  await page.getByRole("button", { name: "Send me a code" }).click();
-  await page.waitForSelector("#otp", { timeout: 15000 });
-  await page.fill("#otp", otpFor(SCHOOL_PHONE, "school"));
-  await page.getByRole("button", { name: "Verify and continue" }).click();
+  await page.fill("#password", PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
 
   await page.waitForSelector("text=About your institution", { timeout: 15000 });
   await page.getByLabel("Institution name").fill("Saraswati Vidya Mandir");

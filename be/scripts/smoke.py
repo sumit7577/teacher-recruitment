@@ -5,7 +5,7 @@ os.environ["DJANGO_ALLOWED_HOSTS"] = "testserver,localhost"
 django.setup()
 
 from django.test import Client
-from user.models import Otp, User
+from user.models import User
 
 c = Client()
 fails = []
@@ -70,13 +70,20 @@ for path in ("/v1/panel/dashboard/", "/v1/teacher/profile/", "/v1/school/dashboa
     check(f"{path} refused", r.status_code in (401, 403), r.status_code)
 
 print("\n── teacher: sign in, profile, apply ──")
-r = c.post("/v1/auth/otp/", {"phone": "9845637278", "role": "teacher"})
-check("otp requested", r.status_code == 200, body(r))
-code = Otp.objects.get(phone="9845637278", kind="teacher").otp
-
-r = c.post("/v1/auth/otp/verify", {"phone": "9845637278", "otp": code, "role": "teacher"})
+User.objects.filter(phone="9845637278").delete()
+r = c.post("/v1/auth/signup", {"phone": "9845637278", "password": "ChalkDust-2026", "role": "teacher"})
 d = body(r).get("data", {})
-check("signed in", r.status_code == 200 and bool(d.get("key")), body(r))
+check("signed up", r.status_code == 200 and bool(d.get("key")), body(r))
+
+r = c.post("/v1/auth/signup", {"phone": "9845637278", "password": "ChalkDust-2026", "role": "teacher"})
+check("the same number cannot sign up twice", r.status_code == 400, body(r))
+
+r = c.post("/v1/auth/password", {"phone": "9845637278", "password": "wrong-one", "role": "teacher"})
+check("a wrong password is refused", r.status_code == 401, r.status_code)
+
+r = c.post("/v1/auth/password", {"phone": "9845637278", "password": "ChalkDust-2026", "role": "teacher"})
+d = body(r).get("data", {})
+check("signed in with the password", r.status_code == 200 and bool(d.get("key")), body(r))
 check("needs_profile on a new teacher", d.get("needs_profile") is True, d)
 th = {"HTTP_AUTHORIZATION": f"Token {d.get('key')}"}
 
@@ -130,9 +137,8 @@ r = c.post(f"/v1/teacher/applications/{pgt.id}/", **th)
 check("double apply refused", r.status_code == 409, r.status_code)
 
 print("\n── school: register, post, work the pipeline ──")
-r = c.post("/v1/auth/otp/", {"phone": "9811122233", "role": "school"})
-code = Otp.objects.get(phone="9811122233", kind="school").otp
-r = c.post("/v1/auth/otp/verify", {"phone": "9811122233", "otp": code, "role": "school"})
+User.objects.filter(phone="9811122233").delete()
+r = c.post("/v1/auth/signup", {"phone": "9811122233", "password": "Blackboard-2026", "role": "school"})
 d = body(r).get("data", {})
 sh = {"HTTP_AUTHORIZATION": f"Token {d.get('key')}"}
 check("school needs_profile", d.get("needs_profile") is True, d)
@@ -164,9 +170,12 @@ check("unverified school can still read its dashboard", r.status_code == 200, bo
 print("\n── staff: panel ──")
 User.objects.filter(phone="9999988888").delete()
 staff = User.objects.create(phone="9999988888", name="Office", is_staff_member=True)
-r = c.post("/v1/auth/otp/", {"phone": "9999988888", "role": "staff"})
-code = Otp.objects.get(phone="9999988888", kind="staff").otp
-r = c.post("/v1/auth/otp/verify", {"phone": "9999988888", "otp": code, "role": "staff"})
+r = c.post("/v1/auth/signup", {"phone": "9999988888", "password": "Staffroom-2026", "role": "staff"})
+check("signing up as staff is refused", r.status_code == 403, body(r))
+
+staff.set_password("Staffroom-2026")
+staff.save(update_fields=["password"])
+r = c.post("/v1/auth/password", {"phone": "9999988888", "password": "Staffroom-2026", "role": "staff"})
 d = body(r).get("data", {})
 ph = {"HTTP_AUTHORIZATION": f"Token {d.get('key')}"}
 check("staff signed in", bool(d.get("key")), body(r))
@@ -245,6 +254,25 @@ from django.core.cache import cache
 cache.clear()  # the rate limit was masking the honeypot
 r = c.post("/v1/public/enquiry/", {"side": "teacher", "name": "Bot", "phone": "9811122255", "website": "http://spam"})
 check("honeypot rejected", r.status_code == 400, body(r))
+
+print("\n── the office resets a locked-out teacher ──")
+r = c.post("/v1/panel/dashboard/password-reset/", {"phone": "9845637278"}, **ph)
+d = body(r).get("data", {})
+temporary = d.get("temporary_password", "")
+check("office issued a temporary password", r.status_code == 200 and len(temporary) == 9, body(r))
+
+r = c.post("/v1/auth/password", {"phone": "9845637278", "password": "ChalkDust-2026", "role": "teacher"})
+check("the old password stops working", r.status_code == 401, r.status_code)
+
+r = c.post("/v1/auth/password", {"phone": "9845637278", "password": temporary, "role": "teacher"})
+check("the temporary one works", r.status_code == 200 and bool(body(r).get("data", {}).get("key")), body(r))
+
+r = c.post("/v1/panel/dashboard/password-reset/", {"phone": "9999988888"}, **ph)
+check("a panel account cannot be reset from the panel", r.status_code == 403, body(r))
+
+r = c.post("/v1/panel/dashboard/password-reset/", {"phone": "9845637278"}, **th)
+check("a teacher cannot reset anyone", r.status_code in (401, 403), r.status_code)
+
 
 print()
 if fails:
