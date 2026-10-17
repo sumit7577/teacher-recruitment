@@ -18,8 +18,13 @@ ones. Where this repo diverges from allcoaching, §7 says so and why.
 - **Auth:** custom `AuthToken` model, SHA256-hashed — *not* DRF's `TokenAuthentication`
 - **Primary keys:** prefixed UUID v7 slugs (`vac_…`, `tch_…`) via `app/public_id.py`
 - **API style:** REST, JSON, `PageNumberPagination` at `PAGE_SIZE = 10`
-- **Uploads:** local filesystem under `MEDIA_ROOT`, served by nginx in production
+- **Uploads:** Bunny CDN (`app/bunny.py`) when `BUNNY_STORAGE_ACCESS_KEY` is set,
+  else the local filesystem under `MEDIA_ROOT`. The column holds a full URL on
+  Bunny and a relative path on disk; `BunnyStorage.url()` handles both, which is
+  why the switch needs no backfill
 - **Push:** Firebase Cloud Messaging (`app/fcm.py`)
+- **Email:** `app/mailer.py` — one-time codes, receipts, alerts
+- **Payments:** Razorpay over plain HTTP (`app/razorpay_api.py`), no SDK
 - **Sign-in with Google:** `user/google_auth.py`, linked by Google's `sub`
 - **Deploy:** Dockerfile → gunicorn, 3 workers × 3 threads, port 8000
 
@@ -35,15 +40,18 @@ be/
 │   ├── taxonomy.py       # posts, qualifications, boards, document kinds
 │   ├── uploads.py        # upload_to paths + file validators
 │   ├── responses.py      # ok() / fail() — the response envelope
-│   ├── sms.py  fcm.py    # the two outbound integrations
+│   ├── fcm.py  mailer.py # the outbound integrations (push, email)
+│   ├── bunny.py          # CDN file storage — the default STORAGES backend
+│   ├── razorpay_api.py   # orders, refunds, and the TWO signature checks
 │   └── apps.py           # registers <pid:…>; admin defaults
-├── user/                 # identity + sign-in. User, AuthToken, Otp.
+├── user/                 # identity + sign-in. User, AuthToken, EmailCode.
 ├── teacher/              # TeacherProfile, TeacherDocument, TeacherExperience
 ├── school/               # School (the institution)
 ├── vacancy/              # Vacancy — the row all four audiences read
 ├── application/          # Application, ApplicationEvent, DemoClass, Offer
 ├── cms/                  # editable site content + the enquiry form
 ├── notifications/        # Device, Notification, PushCampaign
+├── payments/             # Plan, Order, WebhookEvent — Razorpay
 └── panel/                # the firm's dashboard. No models.
 ```
 
@@ -68,9 +76,14 @@ Three levels: `recruit/urls.py` → `app/urls.py` → each feature app's url mod
 ```
 v1/public/    the website, anonymous. No token.
 v1/auth/      sign-in and sign-up for all three signed-in audiences.
+v1/pay/       buying, for any signed-in account. The plan's `audience` decides
+              what is on offer, not the route.
 v1/teacher/   a teacher, on the website or in the app.
 v1/school/    an institution's own workspace.
 v1/panel/     the firm's staff.
+
+razorpay-webhook/   Razorpay's servers. Outside v1/ and outside every audience:
+              a machine calling us, authenticated by an HMAC of the raw body.
 ```
 
 One feature is read by all four audiences and the differences are not cosmetic —

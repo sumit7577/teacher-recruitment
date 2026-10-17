@@ -52,6 +52,38 @@ vi .env
 `DOMAIN` and `SITE_ORIGIN` are the two that everything else follows from. Get
 them wrong and Caddy requests a certificate for the wrong name.
 
+### The three optional integrations
+
+None of them has to be set for the platform to run. Each one is off until it is
+configured, and says so rather than failing.
+
+| Unset | What happens |
+|---|---|
+| `BUNNY_STORAGE_*` | Uploads go to local disk under `MEDIA_ROOT`, as before |
+| `RAZORPAY_*` | Payment endpoints answer "payments are not switched on yet" (503) |
+| `EMAIL_HOST` | Mail is printed to the container log instead of sent |
+
+**Email is now load-bearing**, which it was not before: it carries the one-time
+codes for confirming an address and for resetting a forgotten password. Until
+`EMAIL_HOST` is set, a password reset goes to the log and the user gets nothing,
+so the office-reset path in the panel remains the only working one. Brevo's free
+tier (300/day) covers this comfortably; Amazon SES is the cheaper option past
+that.
+
+**Razorpay needs two secrets, not one.** `RAZORPAY_KEY_SECRET` signs the
+checkout callback; `RAZORPAY_WEBHOOK_SECRET` is generated separately when you
+add the webhook in the dashboard and signs the webhook body. Putting the API
+secret in both places rejects every real webhook while looking correct — the
+symptom is payments that stay "awaiting payment" after the user has clearly
+paid. Register the webhook at `https://<DOMAIN>/razorpay-webhook/` for the
+events `payment.captured` and `payment.failed`.
+
+**Bunny switches over with no backfill.** Files written before the switch keep
+their relative paths and keep being served from `MEDIA_URL`; files written after
+it hold a full CDN URL. Both shapes are handled in `BunnyStorage.url()`, so the
+two can coexist indefinitely and nothing has to be migrated. Keep serving
+`MEDIA_URL` after the switch for exactly that reason.
+
 ## 4. Up
 
 ```bash
