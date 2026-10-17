@@ -26,11 +26,14 @@ const SUB: Record<Role, string> = {
 /**
  * Sign in. A number and a password, and nothing else.
  *
- * There is no one-time code. It needed a DLT-registered SMS sender the client
- * does not have, and a sign-in box that accepts nothing because a gateway is
- * unconfigured is worse than a password to remember. A forgotten password is
- * reset by the office, which is the same desk that already verifies every
- * teacher's certificates.
+ * There is no one-time code over SMS. It needed a DLT-registered sender the
+ * client does not have, and a sign-in box that accepts nothing because a
+ * gateway is unconfigured is worse than a password to remember.
+ *
+ * A forgotten password is now self-service, by a code emailed to a verified
+ * address — see `/forgot`. The office can still reset one from the panel, and
+ * that remains the only route for a teacher with no email address at all,
+ * which here is a real and common case.
  *
  * `next` is honoured only when it is a local path. An open redirect on a sign-in
  * page is how a phishing link gets to look like it came from us.
@@ -136,8 +139,11 @@ export default function SignInForm({
               {signIn.isPending ? "Signing you in…" : "Sign in"}
             </button>
             <p className="text-center text-xs leading-relaxed text-ink-3">
-              Forgotten it? Call the office and they will set a new one for you
-              while you are on the phone.
+              <Link href={`/forgot?as=${role}`} className="font-semibold text-accent hover:underline">
+                Forgotten your password?
+              </Link>{" "}
+              We will email you a code. No email on your account? Call the
+              office and they will set a new one while you are on the phone.
             </p>
           </form>
 

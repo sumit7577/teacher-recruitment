@@ -38,6 +38,10 @@ class UserReadSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id", "name", "email", "phone", "city", "state", "image",
+            # Null until a code sent to `email` came back correct. The client
+            # shows "not confirmed" on it, and it is what decides whether a
+            # self-service password reset is possible at all.
+            "email_verified_at",
             "roles", "has_password", "is_staff_member", "date_joined",
         )
 
@@ -119,3 +123,44 @@ class GoogleLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField()
     role = serializers.ChoiceField(choices=ROLE_CHOICES, default="teacher")
     device = serializers.CharField(max_length=120, required=False, allow_blank=True)
+
+
+# ── email one-time codes ────────────────────────────────────────────────────
+
+
+class EmailField(serializers.EmailField):
+    """An address, lowercased, so one mailbox is one value.
+
+    `Teacher@Gmail.com` and `teacher@gmail.com` are the same inbox but two
+    different strings, and `EmailCode` looks codes up by exact match. Without
+    this, a code requested from the signup form and typed back from a mail
+    client that rewrote the capitalisation would not be found.
+    """
+
+    def to_internal_value(self, data):
+        return super().to_internal_value(data).strip().lower()
+
+
+class EmailCodeRequestSerializer(serializers.Serializer):
+    """Ask for a code to be sent to an address."""
+
+    email = EmailField()
+
+
+class EmailVerifySerializer(serializers.Serializer):
+    email = EmailField()
+    code = serializers.CharField(min_length=4, max_length=10, trim_whitespace=True)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """The code, and the password it buys."""
+
+    email = EmailField()
+    code = serializers.CharField(min_length=4, max_length=10, trim_whitespace=True)
+    # trim_whitespace=False everywhere a password is read: a trailing space is
+    # part of the password the user chose, and silently eating it here but not
+    # at sign-in locks them out of an account they just created.
+    new_password = serializers.CharField(min_length=8, trim_whitespace=False)
+
+    def validate_new_password(self, value):
+        return _validated_password(value)

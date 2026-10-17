@@ -20,7 +20,9 @@ a job is not a data error, and the sign-in switch picks which workspace to open.
 """
 
 import hashlib
+import hmac
 import secrets
+from datetime import timedelta
 
 from django.db import models
 from django.utils import timezone
@@ -61,6 +63,10 @@ class User(models.Model):
     # panel.
     is_staff_member = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=True)
+    # Set when a code sent to `email` came back correct. Null means the address
+    # is unproven — it may be a typo, or somebody else's. Password resets go
+    # only to a proven address, which is the whole reason this column exists.
+    email_verified_at = models.DateTimeField(null=True, blank=True)
 
     date_joined = models.DateTimeField(default=timezone.now)
     date_updated = models.DateTimeField(auto_now=True)
@@ -164,3 +170,159 @@ class AuthToken(models.Model):
         managed = True
         db_table = "auth_token"
         ordering = ("-created",)
+
+
+class EmailCode(models.Model):
+    """A six-digit code, emailed, good for ten minutes.
+
+    This is the one-time password the brief asked for, carried by email instead
+    of SMS. Sending a transactional SMS in India needs a DLT-registered sender
+    and approved templates — weeks of paperwork in the client's name, which is
+    why sign-in shipped on a password alone. Email needs none of that, works
+    today, and leaves the user a written record they can search for.
+
+    It is used for two things and will be used for more:
+
+        `verify_email`    prove the address on an account is reachable
+        `reset_password`  a forgotten password, without telephoning the office
+
+    ## What is stored
+
+    Only a SHA256 digest of the code. Six digits is a million possibilities,
+    which is thin — so the protection is not the hash, it is `attempts` and
+    `expires_at`. Five wrong guesses burns the code; ten minutes burns it
+    anyway. A million-guess attack needs two hundred thousand codes to be
+    issued, and `issue()` won't.
+
+    ## The ordering trap
+
+    `issue()` writes the row and *then* the caller sends the mail. Never the
+    other way round. allcoaching had this inverted once — it deleted the old
+    rows, made a network call that took a second, and wrote the new row after;
+    anyone who typed the code quickly enough was told it was invalid, and the
+    bug only reproduced on a fast typist. Write first, send second, always.
+    """
+
+    PURPOSE_VERIFY_EMAIL = "verify_email"
+    PURPOSE_RESET_PASSWORD = "reset_password"
+    PURPOSE_CHOICES = (
+        (PURPOSE_VERIFY_EMAIL, "Verify an email address"),
+        (PURPOSE_RESET_PASSWORD, "Reset a forgotten password"),
+    )
+
+    # Ten minutes is long enough to find the mail in a spam folder and short
+    # enough that a code left open on a shared screen stops mattering.
+    TTL_MINUTES = 10
+    MAX_ATTEMPTS = 5
+    # A new code cannot be asked for more often than this. Stops the endpoint
+    # being used to post mail at somebody repeatedly, and stops a guesser from
+    # minting the volume of codes a brute force would need.
+    RESEND_AFTER_SECONDS = 60
+
+    id = PublicId(prefix="otp")
+    # Stored lowercased. The address is on the row rather than only on the user
+    # because `verify_email` runs *before* the address is on the account — that
+    # is the whole point of verifying it.
+    email = models.EmailField(max_length=254, db_index=True)
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, db_index=True)
+    code_hash = models.CharField(max_length=64)
+    # Null for a flow that has no account yet. `reset_password` always has one.
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="email_codes", null=True, blank=True,
+    )
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created = models.DateTimeField(default=timezone.now, db_index=True)
+    expires_at = models.DateTimeField(db_index=True)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    @staticmethod
+    def _hash(raw: str) -> str:
+        return hashlib.sha256((raw or "").strip().encode("utf-8")).hexdigest()
+
+    @classmethod
+    def issue(cls, email: str, purpose: str, user=None) -> tuple["EmailCode", str]:
+        """Mint a code. Returns the row and the cleartext, which is never stored.
+
+        Any unconsumed code for the same address and purpose is expired first —
+        two live codes for one mailbox means the older mail still works, which
+        is exactly the window a forwarded or leaked mail needs.
+        """
+        email = (email or "").strip().lower()
+        now = timezone.now()
+
+        cls.objects.filter(
+            email=email, purpose=purpose, consumed_at__isnull=True, expires_at__gt=now,
+        ).update(expires_at=now)
+
+        # `secrets`, not `random` — this is a credential. zfill keeps it six
+        # characters so "004271" is not read out as "4271".
+        raw = str(secrets.randbelow(1_000_000)).zfill(6)
+        row = cls.objects.create(
+            email=email,
+            purpose=purpose,
+            user=user,
+            code_hash=cls._hash(raw),
+            expires_at=now + timedelta(minutes=cls.TTL_MINUTES),
+        )
+        return row, raw
+
+    @classmethod
+    def too_soon(cls, email: str, purpose: str) -> bool:
+        """True when a code was issued for this address moments ago."""
+        cutoff = timezone.now() - timedelta(seconds=cls.RESEND_AFTER_SECONDS)
+        return cls.objects.filter(
+            email=(email or "").strip().lower(), purpose=purpose, created__gt=cutoff,
+        ).exists()
+
+    @classmethod
+    def verify(cls, email: str, purpose: str, code: str) -> tuple["EmailCode | None", str]:
+        """Verify and consume. Returns `(row, "")` or `(None, reason)`.
+
+        NOT named `check`: that is Django's own classmethod on every Model (the
+        system-check hook), and shadowing it makes `manage.py check` call this
+        with `app_configs=` and `databases=` and blow up.
+
+        The reason is written to be shown to the user as-is: "that code has
+        expired" and "that code is not right" are different problems with
+        different next steps, and collapsing them into one message sends people
+        to re-read a mail that was never going to work.
+
+        A failed attempt increments the counter on the row it failed against,
+        so five guesses burn that code rather than merely being slow.
+        """
+        email = (email or "").strip().lower()
+        now = timezone.now()
+
+        row = (
+            cls.objects.filter(email=email, purpose=purpose, consumed_at__isnull=True)
+            .order_by("-created")
+            .first()
+        )
+        if row is None:
+            return None, "Ask for a new code — this one has already been used."
+        if row.expires_at <= now:
+            return None, "That code has expired. Ask for a new one."
+        if row.attempts >= cls.MAX_ATTEMPTS:
+            return None, "Too many wrong tries. Ask for a new code."
+
+        # compare_digest over a plain == so a wrong code cannot be narrowed down
+        # by how long the comparison took.
+        if not hmac.compare_digest(row.code_hash, cls._hash(code)):
+            cls.objects.filter(pk=row.pk).update(attempts=models.F("attempts") + 1)
+            left = cls.MAX_ATTEMPTS - (row.attempts + 1)
+            if left <= 0:
+                return None, "Too many wrong tries. Ask for a new code."
+            return None, f"That code is not right. {left} tries left."
+
+        row.consumed_at = now
+        row.save(update_fields=["consumed_at"])
+        return row, ""
+
+    def __str__(self) -> str:
+        return f"{self.purpose} → {self.email}"
+
+    class Meta:
+        managed = True
+        db_table = "email_code"
+        ordering = ("-created",)
+        indexes = [models.Index(fields=["email", "purpose", "consumed_at"])]
