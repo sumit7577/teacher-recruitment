@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "application",
     "cms",
     "notifications",
+    "payments",
     "panel",
 ]
 
@@ -158,14 +159,40 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
+# Uploads — CVs, certificates, logos, photographs.
+#
+# Two backends, chosen by whether a Bunny access key is configured:
+#
+#   key set     → app.bunny.BunnyStorage. Files go to the CDN, the column holds
+#                 a full URL, and the application server stops being the only
+#                 copy. This is production.
+#   key not set → the filesystem under MEDIA_ROOT, served by the proxy. This is
+#                 a fresh clone with no account, and it must keep working.
+#
+# The switch is one entry because nothing in any model knows where files go —
+# `upload_to=` and the validators are identical either way. Files written under
+# the old backend keep loading after the switch: BunnyStorage.url() recognises a
+# bare path and sends it back through MEDIA_URL. No backfill, no downtime.
+BUNNY_STORAGE_ZONE_NAME = env("BUNNY_STORAGE_ZONE_NAME", "")
+BUNNY_STORAGE_ACCESS_KEY = env("BUNNY_STORAGE_ACCESS_KEY", "")
+BUNNY_STORAGE_PUBLIC_HOST = env("BUNNY_STORAGE_PUBLIC_HOST", "")
+# Region endpoint. Frankfurt (the default zone) is `storage.bunnycdn.com`;
+# a Singapore zone — the right one for Indian traffic — is prefixed `sg.`.
+# Getting this wrong returns a 401 that reads exactly like a bad access key.
+BUNNY_STORAGE_API_HOST = env("BUNNY_STORAGE_API_HOST", "storage.bunnycdn.com")
+
+_BUNNY_READY = bool(BUNNY_STORAGE_ACCESS_KEY and BUNNY_STORAGE_ZONE_NAME and BUNNY_STORAGE_PUBLIC_HOST)
+
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "default": {
+        "BACKEND": "app.bunny.BunnyStorage" if _BUNNY_READY
+        else "django.core.files.storage.FileSystemStorage"
+    },
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
-# Uploads — CVs, certificates, logos, photographs. One server, one disk, served
-# by nginx at MEDIA_URL in production (see CLAUDE.md §6). Switching to S3 or a
-# CDN later is one STORAGES entry; nothing in the models knows where files go.
+# Still set even on Bunny: it is what pre-cutover files are served from, and
+# BunnyStorage.url() builds their URLs with it.
 MEDIA_URL = env("MEDIA_URL", "/media/")
 MEDIA_ROOT = Path(env("MEDIA_ROOT", str(BASE_DIR / "media")))
 
@@ -201,6 +228,16 @@ FCM_CREDENTIALS_FILE = env("FCM_CREDENTIALS_FILE", str(BASE_DIR / "secrets" / "f
 # Google sign-in (the "or Google" in the proposal). Web client id; the Android
 # client verifies against the same project.
 GOOGLE_OAUTH_CLIENT_IDS = env_list("GOOGLE_OAUTH_CLIENT_IDS")
+
+# Razorpay. The key id is public — it ships in the page source of every site
+# using Razorpay's checkout. The other two never leave this server.
+#
+# RAZORPAY_WEBHOOK_SECRET is a SEPARATE value, set when the webhook is created
+# in the Razorpay dashboard. It is not the API secret, and using one where the
+# other belongs rejects every genuine event while looking correct in review.
+RAZORPAY_KEY_ID = env("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = env("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = env("RAZORPAY_WEBHOOK_SECRET", "")
 
 # Where enquiry forms and application alerts are emailed.
 EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
