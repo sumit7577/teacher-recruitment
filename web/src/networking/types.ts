@@ -20,7 +20,7 @@ export interface Paginated<T> {
   results: T[];
 }
 
-export type Role = "teacher" | "school" | "staff";
+export type Role = "teacher" | "school" | "student" | "staff";
 export type Verification = "pending" | "verified" | "rejected";
 
 export type PostType =
@@ -257,6 +257,14 @@ export interface TeacherPanelResp extends TeacherProfileResp {
 /** What a SCHOOL sees. No phone, no email, no CV url — the firm is the channel,
  *  and that is what it is paid for. */
 export interface TeacherCard {
+  /** The USER id, for addressing an interest. `id` is the profile's.
+   *  Always present — TeacherCardSerializer sends it on every card. */
+  user_id: string;
+  designation?: string;
+  designation_label?: string;
+  medium?: string;
+  medium_label?: string;
+  open_to_residential?: boolean;
   id: string;
   name: string;
   image: string;
@@ -456,12 +464,33 @@ export interface TestimonialResp {
   photo_url: string; side: "institution" | "teacher"; order: number; is_published: boolean;
 }
 
+export interface FaqResp {
+  id: string; question: string; answer: string;
+  /** Both sides ask different questions — a teacher asks what registering
+   *  costs, a school asks how long a shortlist takes. The homepage groups on
+   *  this rather than printing one undifferentiated list. */
+  audience: "teacher" | "institution" | "student" | "all";
+  audience_label: string; order: number; is_published: boolean;
+}
+
+/** An outcome with a number on it, which is what persuades a principal who has
+ *  been let down before. Distinct from a TestimonialResp, which is a quote. */
+export interface SuccessStoryResp {
+  id: string; headline: string; body: string;
+  teacher_name: string; teacher_post: string; post_label: string;
+  institution_name: string; city: string;
+  days_to_place: number | null;
+  photo: string; order: number; is_published: boolean;
+}
+
 export interface PublicSiteResp {
   settings: SiteSettings;
   services: ServiceResp[];
   process: ProcessStepResp[];
   team: TeamMemberResp[];
   testimonials: TestimonialResp[];
+  faqs: FaqResp[];
+  stories: SuccessStoryResp[];
   live_vacancies: number;
 }
 
@@ -545,12 +574,14 @@ export interface PasswordReset {
 
 // ── payments ────────────────────────────────────────────────────────────────
 
+export type PlanAudience = "teacher" | "school";
+
 export interface Plan {
   id: string;
   code: string;
   name: string;
   description: string;
-  audience: "teacher" | "school";
+  audience: PlanAudience;
   interval: "once" | "monthly" | "yearly";
   /** Paise. Integers throughout — a float rupee is a rounding error waiting
    *  for a reconciliation meeting. Format with `amount_rupees`, never compute
@@ -606,3 +637,112 @@ export interface CheckoutIntent {
   email: string;
   phone: string;
 }
+
+
+// ── students, parents and tuition (section 6) ───────────────────────────────
+
+export interface StudentProfileResp {
+  id: string;
+  account_holder: "student" | "parent";
+  student_name: string;
+  date_of_birth: string | null;
+  age: number | null;
+  klass: string; klass_label: string;
+  school_name: string; board: string; medium: string; phone: string;
+  guardian_name: string; guardian_relation: string;
+  guardian_phone: string; guardian_email: string;
+  /** Null until a named guardian has agreed. Until then the profile is
+   *  invisible to every teacher and cannot be contacted through any route. */
+  guardian_consent_at: string | null;
+  guardian_consent_by: string;
+  is_minor: boolean;
+  needs_consent: boolean;
+  is_contactable: boolean;
+  address: string; village: string; city: string; pincode: string;
+  state_ref: string | null; district_ref: string | null; block_ref: string | null;
+  latitude: number | null; longitude: number | null;
+  is_hidden: boolean; created_at: string;
+}
+
+/** What a TEACHER is shown of a student. First name, class and district — never
+ *  the address, the date of birth or the coordinates. */
+export interface StudentCardResp {
+  id: string;
+  /** The USER id. `id` above is the profile's — an interest is addressed to a
+   *  person, and sending the profile id gets "No such person" every time. */
+  user_id: string;
+  first_name: string;
+  klass: string; klass_label: string;
+  board: string; medium: string; area: string;
+}
+
+export interface TuitionRequirementResp {
+  id: string;
+  klass: string; klass_label: string;
+  subjects: string[]; medium: string; board: string; exams: string[];
+  mode: "home" | "teacher_place" | "online" | "either"; mode_label: string;
+  days_per_week: number | null; preferred_time: string;
+  budget_min: number | null; budget_max: number | null; budget_label: string;
+  teacher_gender: string;
+  city: string; district_ref: string | null; block_ref: string | null;
+  description: string;
+  status: "open" | "filled" | "closed"; status_label: string;
+  view_count: number; interests_count: number; created_at: string;
+}
+
+/** The same requirement as a teacher sees it: no coordinates, no block, and
+ *  the nested student is the card shape. */
+export interface TuitionCardResp {
+  id: string; student: StudentCardResp;
+  klass: string; klass_label: string;
+  subjects: string[]; medium: string; board: string; exams: string[];
+  mode: string; mode_label: string;
+  days_per_week: number | null; preferred_time: string;
+  budget_label: string; teacher_gender: string;
+  city: string; description: string;
+  distance_km: number | null;
+  created_at: string;
+}
+
+// ── interest and chat (sections 9 and 12) ───────────────────────────────────
+
+/** The other person in a connection. Name and role only — no phone and no
+ *  email, even after an interest is accepted. The firm is the channel. */
+export interface Counterparty {
+  id: string; name: string; roles: Role[]; image: string; is_me: boolean;
+}
+
+export interface InterestResp {
+  id: string;
+  person: Counterparty;
+  direction: "sent" | "received";
+  context: "profile" | "vacancy" | "tuition";
+  context_label: string; context_id: string;
+  message: string;
+  status: "pending" | "accepted" | "rejected" | "withdrawn";
+  status_label: string;
+  seen_at: string | null; responded_at: string | null;
+  /** Present only once accepted. Its absence IS "no conversation yet". */
+  thread_id: string | null;
+  created_at: string;
+}
+
+export interface ThreadResp {
+  id: string;
+  person: Counterparty;
+  last_message: { body: string; at: string; mine: boolean } | null;
+  unread: number;
+  last_message_at: string | null;
+  created_at: string;
+}
+
+export interface MessageResp {
+  id: string; body: string; mine: boolean;
+  read_at: string | null; created_at: string;
+}
+
+// ── location (section 10) ───────────────────────────────────────────────────
+
+export interface StateResp { id: string; name: string; is_union_territory: boolean; }
+export interface DistrictResp { id: string; name: string; state: string; }
+export interface BlockResp { id: string; name: string; kind: string; district: string; }

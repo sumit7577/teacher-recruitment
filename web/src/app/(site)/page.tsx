@@ -11,6 +11,8 @@ import Column from "@/components/common/Column";
 import Row from "@/components/common/Row";
 import HomeSearch from "@/components/site/HomeSearch";
 import VacancyCard from "@/components/site/VacancyCard";
+import FaqSection from "@/components/site/FaqSection";
+import StoriesSection from "@/components/site/StoriesSection";
 import { serverGet, serverGetData } from "@/networking/server";
 import type { Paginated, PublicSiteResp, VacancyCard as Vacancy, VacancyFacets } from "@/networking/types";
 
@@ -202,9 +204,12 @@ export default async function HomePage() {
         </Row>
       </section>
 
+      {/* ── placements, then the questions they raise ───────────────────── */}
+      <StoriesSection stories={site?.stories ?? []} />
+
       {/* ── one testimonial ─────────────────────────────────────────────── */}
       {testimonial ? (
-        <section className="mx-auto w-full max-w-4xl px-4 pb-20 sm:px-6">
+        <section className="mx-auto w-full max-w-4xl px-4 py-14 sm:px-6">
           <Column className="gap-5 text-center">
             <blockquote className="font-display text-xl font-bold leading-snug text-ink-1 sm:text-2xl">
               “{testimonial.quote}”
@@ -218,6 +223,8 @@ export default async function HomePage() {
           </Column>
         </section>
       ) : null}
+
+      <FaqSection faqs={site?.faqs ?? []} />
     </>
   );
 }

@@ -75,10 +75,17 @@ class StudentCardSerializer(serializers.ModelSerializer):
     klass_label = serializers.CharField(source="get_klass_display", read_only=True)
     area = serializers.SerializerMethodField()
     first_name = serializers.SerializerMethodField()
+    # The id an interest is addressed to. `id` above is the PROFILE's — the
+    # interest endpoint resolves a User, so a card carrying only the profile id
+    # can be hearted and will always come back "No such person".
+    user_id = serializers.CharField(source="user.id", read_only=True)
 
     class Meta:
         model = StudentProfile
-        fields = ("id", "first_name", "klass", "klass_label", "board", "medium", "area")
+        fields = (
+            "id", "user_id", "first_name", "klass", "klass_label",
+            "board", "medium", "area",
+        )
 
     def get_area(self, obj):
         if obj.district_ref_id:

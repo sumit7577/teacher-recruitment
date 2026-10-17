@@ -37,6 +37,19 @@ import type {
   CheckoutIntent,
   Order,
   OrderPanel,
+  StudentProfileResp,
+  TuitionRequirementResp,
+  TuitionCardResp,
+  TeacherCard,
+  InterestResp,
+  ThreadResp,
+  MessageResp,
+  Counterparty,
+  StateResp,
+  DistrictResp,
+  BlockResp,
+  FaqResp,
+  SuccessStoryResp,
 } from "./types";
 
 /**
@@ -351,6 +364,153 @@ const panelRefund = async (
 ): Promise<OrderPanel> =>
   unwrap((await client.post(`${API_BASE}/v1/panel/payments/${id}/refund/`, body)).data);
 
+
+// ── student / parent workspace (section 6) ──────────────────────────────────
+
+const getStudentProfile = async (): Promise<StudentProfileResp> =>
+  unwrap((await client.get(`${API_BASE}/v1/student/profile/`)).data);
+
+const createStudentProfile = async (body: Record<string, unknown>): Promise<StudentProfileResp> =>
+  unwrap((await client.post(`${API_BASE}/v1/student/profile/`, body)).data);
+
+const updateStudentProfile = async (body: Record<string, unknown>): Promise<StudentProfileResp> =>
+  unwrap((await client.patch(`${API_BASE}/v1/student/profile/`, body)).data);
+
+/** A guardian typing their own name to agree. Its own call, never a field on
+ *  the profile PATCH — the server records who agreed and when, and refuses to
+ *  let a profile update set it. */
+const giveConsent = async (guardianName: string): Promise<StudentProfileResp> =>
+  unwrap((await client.post(`${API_BASE}/v1/student/consent/`, {
+    guardian_name: guardianName, agreed: true,
+  })).data);
+
+const getMyRequirements = async (): Promise<Paginated<TuitionRequirementResp>> =>
+  (await client.get(`${API_BASE}/v1/student/requirements/`)).data;
+
+const createRequirement = async (body: Record<string, unknown>): Promise<TuitionRequirementResp> =>
+  (await client.post(`${API_BASE}/v1/student/requirements/`, body)).data;
+
+const updateRequirement = async (
+  id: string, body: Record<string, unknown>,
+): Promise<TuitionRequirementResp> =>
+  (await client.patch(`${API_BASE}/v1/student/requirements/${id}/`, body)).data;
+
+const deleteRequirement = async (id: string): Promise<void> => {
+  await client.delete(`${API_BASE}/v1/student/requirements/${id}/`);
+};
+
+const getNearbyTeachers = async (
+  params: { subject?: string; klass?: string; medium?: string; km?: number } = {},
+): Promise<Paginated<TeacherCard>> =>
+  (await client.get(`${API_BASE}/v1/student/teachers/`, { params: clean(params as Params) })).data;
+
+/** Open tuition requirements, as a teacher sees them. */
+const getOpenTuitions = async (
+  params: { subject?: string; klass?: string; medium?: string; mode?: string; km?: number } = {},
+): Promise<Paginated<TuitionCardResp>> =>
+  (await client.get(`${API_BASE}/v1/teacher/tuitions/`, { params: clean(params as Params) })).data;
+
+// ── interest and chat (sections 9 and 12) ───────────────────────────────────
+
+const getInterests = async (
+  box: "received" | "sent" = "received", status?: string,
+): Promise<Paginated<InterestResp>> =>
+  (await client.get(`${API_BASE}/v1/connect/interests/`, {
+    params: clean({ box, status } as Params),
+  })).data;
+
+const sendInterest = async (body: {
+  to_user: string; context?: string; context_id?: string; message?: string;
+}): Promise<InterestResp> =>
+  unwrap((await client.post(`${API_BASE}/v1/connect/interests/new/`, body)).data);
+
+/** `action` is accept | reject | withdraw. Only the recipient may accept or
+ *  reject; only the sender may withdraw. The server enforces both. */
+const respondToInterest = async (
+  id: string, action: "accept" | "reject" | "withdraw",
+): Promise<Envelope<InterestResp>> =>
+  (await client.post(`${API_BASE}/v1/connect/interests/${id}/${action}/`)).data;
+
+const markInterestsSeen = async (): Promise<Envelope<never>> =>
+  (await client.post(`${API_BASE}/v1/connect/interests/seen/`)).data;
+
+const getThreads = async (): Promise<Paginated<ThreadResp>> =>
+  (await client.get(`${API_BASE}/v1/connect/threads/`)).data;
+
+/** Reading a thread marks the other side's messages read, server-side. */
+const getMessages = async (
+  threadId: string,
+): Promise<{ person: Counterparty; messages: MessageResp[] }> =>
+  unwrap((await client.get(`${API_BASE}/v1/connect/threads/${threadId}/messages/`)).data);
+
+const sendMessage = async (threadId: string, body: string): Promise<MessageResp> =>
+  unwrap((await client.post(`${API_BASE}/v1/connect/threads/${threadId}/messages/`, { body })).data);
+
+const blockPerson = async (target: string, reason = ""): Promise<Envelope<never>> =>
+  (await client.post(`${API_BASE}/v1/connect/block/`, { target, reason })).data;
+
+const unblockPerson = async (target: string): Promise<Envelope<never>> =>
+  (await client.delete(`${API_BASE}/v1/connect/block/`, { data: { target } })).data;
+
+const reportPerson = async (
+  target: string, reason: string, detail = "",
+): Promise<Envelope<never>> =>
+  (await client.post(`${API_BASE}/v1/connect/report/`, { target, reason, detail })).data;
+
+// ── location (section 10) ───────────────────────────────────────────────────
+
+const getStates = async (): Promise<StateResp[]> =>
+  (await client.get(`${API_BASE}/v1/public/locations/states/`)).data;
+
+const getDistricts = async (state: string): Promise<DistrictResp[]> =>
+  (await client.get(`${API_BASE}/v1/public/locations/districts/`, { params: { state } })).data;
+
+const getBlocks = async (district: string): Promise<BlockResp[]> =>
+  (await client.get(`${API_BASE}/v1/public/locations/blocks/`, { params: { district } })).data;
+
+// ── panel: students, reports, FAQs, stories ─────────────────────────────────
+
+const panelStudents = async (
+  params: { q?: string; needs_consent?: string; page?: number } = {},
+): Promise<Paginated<StudentProfileResp>> =>
+  (await client.get(`${API_BASE}/v1/panel/students/`, { params: clean(params as Params) })).data;
+
+const panelReports = async (
+  params: { status?: string; page?: number } = {},
+): Promise<Paginated<Record<string, unknown>>> =>
+  (await client.get(`${API_BASE}/v1/panel/reports/`, { params: clean(params as Params) })).data;
+
+const panelActOnReport = async (
+  id: string, status: string, note = "",
+): Promise<Envelope<never>> =>
+  (await client.post(`${API_BASE}/v1/panel/reports/${id}/`, { status, internal_note: note })).data;
+
+const panelFaqs = async (): Promise<FaqResp[]> =>
+  (await client.get(`${API_BASE}/v1/panel/site/faqs/`)).data;
+
+const panelSaveFaq = async (id: string | null, body: Record<string, unknown>): Promise<FaqResp> =>
+  id
+    ? (await client.patch(`${API_BASE}/v1/panel/site/faqs/${id}/`, body)).data
+    : (await client.post(`${API_BASE}/v1/panel/site/faqs/`, body)).data;
+
+const panelDeleteFaq = async (id: string): Promise<void> => {
+  await client.delete(`${API_BASE}/v1/panel/site/faqs/${id}/`);
+};
+
+const panelStories = async (): Promise<SuccessStoryResp[]> =>
+  (await client.get(`${API_BASE}/v1/panel/site/stories/`)).data;
+
+const panelSaveStory = async (
+  id: string | null, body: Record<string, unknown>,
+): Promise<SuccessStoryResp> =>
+  id
+    ? (await client.patch(`${API_BASE}/v1/panel/site/stories/${id}/`, body)).data
+    : (await client.post(`${API_BASE}/v1/panel/site/stories/`, body)).data;
+
+const panelDeleteStory = async (id: string): Promise<void> => {
+  await client.delete(`${API_BASE}/v1/panel/site/stories/${id}/`);
+};
+
 const panelVacancies = async (query: VacancyQuery = {}): Promise<Paginated<VacancyPanel>> =>
   (await client.get(`${API_BASE}/v1/panel/vacancies/`, { params: clean(query as Params) })).data;
 
@@ -498,6 +658,19 @@ const ApiController = {
   requestEmailCode, verifyEmail, forgotPassword, resetPasswordWithCode,
   // payments
   getPlans, createOrder, verifyPayment, getMyOrders, panelPayments, panelRefund,
+  // student / parent
+  getStudentProfile, createStudentProfile, updateStudentProfile, giveConsent,
+  getMyRequirements, createRequirement, updateRequirement, deleteRequirement,
+  getNearbyTeachers, getOpenTuitions,
+  // interest and chat
+  getInterests, sendInterest, respondToInterest, markInterestsSeen,
+  getThreads, getMessages, sendMessage, blockPerson, unblockPerson, reportPerson,
+  // location
+  getStates, getDistricts, getBlocks,
+  // panel additions
+  panelStudents, panelReports, panelActOnReport,
+  panelFaqs, panelSaveFaq, panelDeleteFaq,
+  panelStories, panelSaveStory, panelDeleteStory,
   // teacher
   getTeacherProfile, createTeacherProfile, updateTeacherProfile,
   getTeacherDocuments, uploadTeacherDocument, deleteTeacherDocument,

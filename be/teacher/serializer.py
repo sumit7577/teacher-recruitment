@@ -151,6 +151,9 @@ class TeacherCardSerializer(serializers.ModelSerializer):
     """
 
     name = serializers.CharField(source="user.name", read_only=True)
+    # Who an interest is addressed to. `id` is the profile's; the connect
+    # endpoints resolve a User.
+    user_id = serializers.CharField(source="user.id", read_only=True)
     image = serializers.SerializerMethodField()
     post_label = serializers.CharField(source="get_post_display", read_only=True)
     experience_label = serializers.CharField(source="get_experience_band_display", read_only=True)
@@ -161,7 +164,7 @@ class TeacherCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeacherProfile
         fields = (
-            "id", "name", "image", "post", "post_label", "subjects",
+            "id", "user_id", "name", "image", "post", "post_label", "subjects",
             "qualifications", "highest_qualification", "experience_band",
             "experience_label", "experience_years", "city", "headline", "about",
             "verification", "police_verified", "documents_verified",

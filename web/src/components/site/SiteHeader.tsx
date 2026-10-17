@@ -12,7 +12,9 @@ import { serverSessionSnapshot, sessionSnapshot, subscribeSession } from "@/netw
 import type { SiteSettings } from "@/networking/types";
 
 const LINKS = [
-  { href: "/jobs", label: "Teaching Jobs" },
+  { href: "/jobs?institution_type=school", label: "School Jobs" },
+  { href: "/jobs?institution_type=coaching", label: "Coaching Jobs" },
+  { href: "/tuition", label: "Tuition" },
   { href: "/institutions", label: "For Institutions" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
