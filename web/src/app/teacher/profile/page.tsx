@@ -31,6 +31,47 @@ import type { TeacherDocumentResp, TeacherProfileResp, VacancyFacets } from "@/n
  * to a school: the documents first (a CV is what gates applying at all), then the
  * matching fields, then the history.
  */
+/** The 21+ titles from the brief. A designation is the title on the
+ *  appointment letter; `post` is the band the board filters on, and the server
+ *  derives one from the other so nobody answers twice. */
+const DESIGNATIONS: [string, string][] = [
+  ["pgt", "PGT — Post Graduate Teacher"],
+  ["tgt", "TGT — Trained Graduate Teacher"],
+  ["prt", "PRT — Primary Teacher"],
+  ["pre_primary", "Pre-primary / NTT"],
+  ["principal", "Principal"],
+  ["vice_principal", "Vice-Principal"],
+  ["academic_coordinator", "Academic Coordinator"],
+  ["sports", "Sports Teacher"],
+  ["music", "Music Teacher"],
+  ["fine_arts", "Fine Arts Teacher"],
+  ["dance", "Dance Teacher"],
+  ["counsellor", "Counsellor"],
+  ["wellness", "Wellness Teacher"],
+  ["special_educator", "Special Educator"],
+  ["librarian", "Librarian"],
+  ["lab_assistant", "Lab Assistant"],
+  ["it", "IT / Computer"],
+  ["accounts", "Accounts"],
+  ["cashier", "Cashier"],
+  ["front_office", "Front Office (PRO)"],
+  ["office_incharge", "Office Incharge"],
+  ["hr_head", "HR Head"],
+  ["hostel_warden", "Hostel Warden / Superintendent"],
+  ["housekeeping", "Housekeeping Supervisor"],
+  ["transport", "Transport Incharge"],
+  ["other", "Any other"],
+];
+
+const CLASS_OPTIONS = [
+  { value: "nursery", label: "Nursery" },
+  { value: "lkg", label: "LKG" },
+  { value: "ukg", label: "UKG" },
+  ...Array.from({ length: 12 }, (_, i) => ({
+    value: String(i + 1), label: `Class ${i + 1}`,
+  })),
+];
+
 export default function TeacherProfilePage() {
   const profile = useQuery({
     queryKey: ["teacher", "profile"],
@@ -293,6 +334,20 @@ function MatchingFields({
     about: profile.about,
     expected_salary_lpa: profile.expected_salary_lpa ?? "",
     is_open_to_work: profile.is_open_to_work,
+    // Added with the fuller profile. `teaching_preferences` is the one that
+    // actually gates a feature: the parent-facing tutor search filters on it
+    // containing "home_tuition", so without a row here no teacher can ever
+    // opt in and that search is permanently empty.
+    designation: profile.designation ?? "",
+    teaching_preferences: profile.teaching_preferences ?? [],
+    medium: profile.medium ?? "",
+    exams: profile.exams ?? [],
+    classes_taught: profile.classes_taught ?? [],
+    pincode: profile.pincode ?? "",
+    open_to_residential: profile.open_to_residential ?? false,
+    accommodation_preference: profile.accommodation_preference ?? "",
+    food_preference: profile.food_preference ?? "",
+    is_hidden: profile.is_hidden ?? false,
   });
 
   const save = useMutation({
@@ -366,11 +421,129 @@ function MatchingFields({
         />
       </Field>
 
+      <Field label="Where you will work" group hint="A school post and home tuition are not exclusive — tick both if you want both.">
+        <ChipPicker
+          options={[
+            { value: "school", label: "School teaching" },
+            { value: "coaching", label: "Coaching institute" },
+            { value: "home_tuition", label: "Home tuition" },
+          ]}
+          value={form.teaching_preferences}
+          onChange={(teaching_preferences) => setForm({ ...form, teaching_preferences })}
+        />
+      </Field>
+
+      <Row className="flex-col gap-4 sm:flex-row">
+        <Field label="Your designation" className="flex-1" hint="The title on your appointment letter.">
+          <select
+            value={form.designation}
+            onChange={(event) => setForm({ ...form, designation: event.target.value })}
+            className="field"
+          >
+            <option value="">Not set</option>
+            {DESIGNATIONS.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Teaching medium" className="flex-1">
+          <select
+            value={form.medium}
+            onChange={(event) => setForm({ ...form, medium: event.target.value })}
+            className="field"
+          >
+            <option value="">Not set</option>
+            <option value="english">English</option>
+            <option value="hindi">Hindi</option>
+            <option value="both">English and Hindi</option>
+            <option value="regional">Regional language</option>
+          </select>
+        </Field>
+      </Row>
+
+      <Field label="Classes you take" group>
+        <ChipPicker
+          options={CLASS_OPTIONS}
+          value={form.classes_taught}
+          onChange={(classes_taught) => setForm({ ...form, classes_taught })}
+        />
+      </Field>
+
+      <Field label="Exams you prepare students for" group>
+        <ChipPicker
+          options={[
+            { value: "jee", label: "JEE" },
+            { value: "neet", label: "NEET" },
+            { value: "olympiad", label: "Olympiad" },
+            { value: "ntse", label: "NTSE" },
+            { value: "boards", label: "Board exams" },
+            { value: "foundation", label: "Foundation (9th–10th)" },
+          ]}
+          value={form.exams}
+          onChange={(exams) => setForm({ ...form, exams })}
+        />
+      </Field>
+
+      {/* The residential block. Asked symmetrically of the vacancy, so a match
+          is a comparison rather than an interpretation. */}
+      <Column className="gap-2.5 rounded-xl border border-line p-3.5">
+        <label className="flex items-start gap-2.5 text-sm font-semibold text-ink-1">
+          <input
+            type="checkbox"
+            checked={form.open_to_residential}
+            onChange={(event) => setForm({ ...form, open_to_residential: event.target.checked })}
+            className="mt-0.5"
+          />
+          I would take a residential post
+        </label>
+        {form.open_to_residential ? (
+          <Row className="flex-col gap-3 sm:flex-row">
+            <Field label="Accommodation you would accept" className="flex-1">
+              <select
+                value={form.accommodation_preference}
+                onChange={(event) =>
+                  setForm({ ...form, accommodation_preference: event.target.value })
+                }
+                className="field"
+              >
+                <option value="">No preference</option>
+                <option value="separate_room">Separate room</option>
+                <option value="shared_room">Shared room</option>
+                <option value="dormitory">Dormitory</option>
+                <option value="family_quarter">Family quarter</option>
+              </select>
+            </Field>
+            <Field label="Food" className="flex-1">
+              <select
+                value={form.food_preference}
+                onChange={(event) => setForm({ ...form, food_preference: event.target.value })}
+                className="field"
+              >
+                <option value="">No preference</option>
+                <option value="veg">Vegetarian</option>
+                <option value="non_veg">Non-vegetarian</option>
+                <option value="both">Both</option>
+              </select>
+            </Field>
+          </Row>
+        ) : null}
+      </Column>
+
       <Row className="flex-col gap-4 sm:flex-row">
         <Field label="Your city" className="flex-1">
           <input
             value={form.city}
             onChange={(event) => setForm({ ...form, city: event.target.value })}
+            className="field"
+          />
+        </Field>
+        <Field label="PIN code" className="sm:w-36" hint="Used for 'tutors near me'.">
+          <input
+            value={form.pincode}
+            onChange={(event) =>
+              setForm({ ...form, pincode: event.target.value.replace(/\D/g, "").slice(0, 6) })
+            }
+            inputMode="numeric"
             className="field"
           />
         </Field>

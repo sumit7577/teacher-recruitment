@@ -214,6 +214,20 @@ export interface TeacherExperienceResp {
 }
 
 export interface TeacherProfileResp {
+  designation?: string;
+  designation_label?: string;
+  /** Contains "home_tuition" when the teacher has opted into tuition work.
+   *  The parent-facing tutor search filters on exactly this. */
+  teaching_preferences?: string[];
+  medium?: string;
+  exams?: string[];
+  classes_taught?: string[];
+  pincode?: string;
+  open_to_residential?: boolean;
+  accommodation_preference?: string;
+  food_preference?: string;
+  open_to_all_india?: boolean;
+  is_hidden?: boolean;
   id: string;
   name: string;
   phone: string;
