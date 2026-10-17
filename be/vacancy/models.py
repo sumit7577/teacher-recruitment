@@ -24,6 +24,7 @@ from django.utils import timezone
 
 from app import taxonomy
 from app.public_id import PublicId
+from location.models import NearbyQuerySet
 from school.models import School
 from user.models import User
 
@@ -55,7 +56,7 @@ SOURCE_SCHOOL = "school"
 SOURCE_CHOICES = ((SOURCE_FIRM, "Posted by the office"), (SOURCE_SCHOOL, "Posted by the institution"))
 
 
-class VacancyQuerySet(models.QuerySet):
+class VacancyQuerySet(NearbyQuerySet):
     def public(self):
         """What an anonymous visitor may see. Everything else — drafts, posts
         waiting for review, a filled post — is invisible, and this method is the
@@ -169,6 +170,41 @@ class Vacancy(models.Model):
     )
     internal_note = models.TextField(blank=True, default="")
     view_count = models.PositiveIntegerField(default=0)
+
+    # ── the questions a teacher asks before applying ────────────────────
+    #
+    # Asked symmetrically with the teacher profile, so a match is a comparison
+    # and not an interpretation. Medium decides whether they can teach the
+    # class at all; the residential block decides whether they will move.
+    designation = models.CharField(
+        max_length=24, choices=taxonomy.DESIGNATION_CHOICES, blank=True, default="", db_index=True,
+    )
+    medium = models.CharField(
+        max_length=12, choices=taxonomy.MEDIUM_CHOICES, blank=True, default="",
+    )
+    exams = models.JSONField(default=list, blank=True)
+    classes_taught = models.JSONField(default=list, blank=True)
+
+    is_residential = models.BooleanField(default=False, db_index=True)
+    accommodation = models.CharField(
+        max_length=16, choices=taxonomy.ACCOMMODATION_CHOICES, blank=True, default="",
+    )
+    food = models.CharField(max_length=8, choices=taxonomy.FOOD_CHOICES, blank=True, default="")
+    facilities = models.JSONField(default=list, blank=True)
+    residential_note = models.TextField(blank=True, default="")
+
+    # Structured location, mirroring the teacher's. `city`/`state` above stay.
+    state_ref = models.ForeignKey(
+        "location.State", on_delete=models.SET_NULL, null=True, blank=True, related_name="vacancies",
+    )
+    district_ref = models.ForeignKey(
+        "location.District", on_delete=models.SET_NULL, null=True, blank=True, related_name="vacancies",
+    )
+    block_ref = models.ForeignKey(
+        "location.Block", on_delete=models.SET_NULL, null=True, blank=True, related_name="vacancies",
+    )
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
 
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

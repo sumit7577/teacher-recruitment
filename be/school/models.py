@@ -17,8 +17,16 @@ from django.utils import timezone
 
 from app import taxonomy
 from app.public_id import PublicId
+from location.models import NearbyQuerySet
 from app.uploads import upload_to, validate_document, validate_image
 from user.models import User
+
+
+class SchoolQuerySet(NearbyQuerySet):
+    """`.near()` on institutions — "schools near me" in the brief's section 10."""
+
+    def listable(self):
+        return self.filter(is_hidden=False)
 
 
 class School(models.Model):
@@ -79,8 +87,100 @@ class School(models.Model):
     )
     internal_note = models.TextField(blank=True, default="")
 
+    # ── address, in the detail the brief asks for ───────────────────────
+    #
+    # "At, PO, PS, landmark" is how a rural Indian address is actually written
+    # and how a school secretary will dictate it. The free-text `address` above
+    # stays and still holds what anyone has already typed.
+    address_at = models.CharField(max_length=160, blank=True, default="", verbose_name="At")
+    address_po = models.CharField(max_length=160, blank=True, default="", verbose_name="Post Office")
+    address_ps = models.CharField(max_length=160, blank=True, default="", verbose_name="Police Station")
+    landmark = models.CharField(max_length=160, blank=True, default="")
+    country = models.CharField(max_length=60, blank=True, default="India")
+    state_ref = models.ForeignKey(
+        "location.State", on_delete=models.SET_NULL, null=True, blank=True, related_name="schools",
+    )
+    district_ref = models.ForeignKey(
+        "location.District", on_delete=models.SET_NULL, null=True, blank=True, related_name="schools",
+    )
+    block_ref = models.ForeignKey(
+        "location.Block", on_delete=models.SET_NULL, null=True, blank=True, related_name="schools",
+    )
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+
+    # ── the two people a teacher actually needs ─────────────────────────
+    #
+    # `contact_person` above is whoever registered. These are the roles: a
+    # teacher chasing an application wants HR, a teacher negotiating wants the
+    # principal, and collapsing them into one name means ringing the wrong one.
+    principal_name = models.CharField(max_length=140, blank=True, default="")
+    principal_phone = models.CharField(max_length=20, blank=True, default="")
+    principal_email = models.EmailField(max_length=254, blank=True, default="")
+    hr_name = models.CharField(max_length=140, blank=True, default="")
+    hr_phone = models.CharField(max_length=20, blank=True, default="")
+    hr_email = models.EmailField(max_length=254, blank=True, default="")
+    # The number a school will actually answer. Asked separately because the
+    # office landline and the WhatsApp number are rarely the same.
+    whatsapp = models.CharField(max_length=20, blank=True, default="")
+
+    # ── proving the place exists ────────────────────────────────────────
+    #
+    # A photograph taken at the gate with coordinates attached, and a short
+    # video. Both are in the brief for the same reason: a teacher is being
+    # asked to move cities for this, and a logo proves nothing.
+    gps_image = models.ImageField(
+        upload_to=upload_to("school", "gps"), blank=True, null=True,
+        max_length=500, validators=[validate_image],
+    )
+    gps_image_latitude = models.FloatField(null=True, blank=True)
+    gps_image_longitude = models.FloatField(null=True, blank=True)
+    gps_image_taken_at = models.DateTimeField(null=True, blank=True)
+    # 30–45 seconds. Stored as a URL rather than a file: a 45-second video is
+    # 20–60 MB, which is six times the upload ceiling and does not belong on
+    # the same path as a certificate. Institutions paste a YouTube or Drive
+    # link, and the panel can host one on the CDN if asked.
+    intro_video_url = models.URLField(max_length=500, blank=True, default="")
+
+    # ── coaching institutes ─────────────────────────────────────────────
+    #
+    # A coaching institute registers through this same model — it is an
+    # institution with `institution_type="coaching"`. These are the questions
+    # the brief asks only of them; a school leaves them empty.
+    manager_name = models.CharField(max_length=140, blank=True, default="")
+    manager_phone = models.CharField(max_length=20, blank=True, default="")
+    manager_email = models.EmailField(max_length=254, blank=True, default="")
+    # "Running classes (From–To)" — a coaching institute that takes 9th to 12th.
+    classes_from = models.CharField(
+        max_length=10, choices=taxonomy.CLASS_CHOICES, blank=True, default="",
+    )
+    classes_to = models.CharField(
+        max_length=10, choices=taxonomy.CLASS_CHOICES, blank=True, default="",
+    )
+    # `board` above is one value; a coaching institute prepares for several.
+    boards = models.JSONField(default=list, blank=True)
+    medium = models.CharField(
+        max_length=12, choices=taxonomy.MEDIUM_CHOICES, blank=True, default="",
+    )
+    exams = models.JSONField(default=list, blank=True)
+
+    # ── residential posts offered ───────────────────────────────────────
+    offers_residential = models.BooleanField(default=False, db_index=True)
+    accommodation = models.CharField(
+        max_length=16, choices=taxonomy.ACCOMMODATION_CHOICES, blank=True, default="",
+    )
+    food = models.CharField(max_length=8, choices=taxonomy.FOOD_CHOICES, blank=True, default="")
+    facilities = models.JSONField(default=list, blank=True)
+    residential_note = models.TextField(blank=True, default="")
+
+    # Same distinction as the teacher's: "not hiring right now" is not the same
+    # as "do not list us at all".
+    is_hidden = models.BooleanField(default=False, db_index=True)
+
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = SchoolQuerySet.as_manager()
 
     @property
     def is_verified(self) -> bool:

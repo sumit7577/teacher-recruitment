@@ -59,6 +59,19 @@ class SchoolSelfSerializer(SchoolPublicSerializer):
             "office_phone", "office_email", "website", "address", "pincode", "state",
             "staff_count", "status", "status_label", "is_verified", "outstanding",
             "affiliation_certificate", "rejection_reason", "created_at",
+        
+            # Added with the fuller address, the two named contacts, the
+            # coaching fields and the residential block.
+            "address_at", "address_po", "address_ps", "landmark", "country",
+            "whatsapp", "gps_image_latitude", "gps_image_longitude", "intro_video_url",
+            "principal_name", "principal_phone", "principal_email",
+            "hr_name", "hr_phone", "hr_email",
+            "manager_name", "manager_phone", "manager_email",
+            "classes_from", "classes_to", "boards", "medium", "exams",
+            "offers_residential", "accommodation", "food", "facilities",
+            "residential_note",
+            "state_ref", "district_ref", "block_ref", "latitude", "longitude",
+            "is_hidden",
         )
 
     def get_affiliation_certificate(self, obj):

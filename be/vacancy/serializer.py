@@ -26,6 +26,8 @@ class VacancyCardSerializer(serializers.ModelSerializer):
     experience_label = serializers.CharField(source="get_experience_band_display", read_only=True)
     salary = serializers.CharField(source="salary_label", read_only=True)
     is_new = serializers.BooleanField(read_only=True)
+    designation_label = serializers.CharField(source="get_designation_display", read_only=True)
+    medium_label = serializers.CharField(source="get_medium_display", read_only=True)
     logo = serializers.SerializerMethodField()
 
     class Meta:
@@ -37,6 +39,13 @@ class VacancyCardSerializer(serializers.ModelSerializer):
             "qualification", "experience_band", "experience_label",
             "salary", "salary_min_lpa", "salary_max_lpa", "salary_note",
             "is_new", "is_featured", "is_urgent", "published_at",
+            # Added with the fuller vacancy. `medium` and `is_residential`
+            # are on the CARD rather than the detail panel because they are
+            # disqualifying: a Hindi-medium teacher scrolling an English-medium
+            # board, or someone who cannot relocate reading a residential post,
+            # should know before they open it.
+            "designation", "designation_label", "medium", "medium_label",
+            "is_residential",
         )
 
     def get_logo(self, obj):
@@ -49,12 +58,18 @@ class VacancyReadSerializer(VacancyCardSerializer):
     before applying — duties, requirements, and how the demo class will run."""
 
     applications_count = serializers.IntegerField(read_only=True)
+    accommodation_label = serializers.CharField(source="get_accommodation_display", read_only=True)
+    food_label = serializers.CharField(source="get_food_display", read_only=True)
 
     class Meta(VacancyCardSerializer.Meta):
         fields = VacancyCardSerializer.Meta.fields + (
             "description", "duties", "requirements", "demo_class",
             "qualification_codes", "state", "experience_min", "experience_max",
             "status", "closes_on", "created_at", "applications_count",
+            # The residential terms in full, and what is actually taught.
+            "accommodation", "accommodation_label", "food", "food_label",
+            "facilities", "residential_note", "exams", "classes_taught",
+            "district_ref", "block_ref",
         )
 
 

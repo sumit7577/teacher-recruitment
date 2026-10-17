@@ -104,6 +104,8 @@ class TeacherSelfSerializer(serializers.ModelSerializer):
     email = serializers.CharField(source="user.email", read_only=True, default="")
     image = serializers.SerializerMethodField()
     post_label = serializers.CharField(source="get_post_display", read_only=True)
+    designation_label = serializers.CharField(source="get_designation_display", read_only=True)
+    medium_label = serializers.CharField(source="get_medium_display", read_only=True)
     experience_label = serializers.CharField(source="get_experience_band_display", read_only=True)
     completeness = serializers.IntegerField(read_only=True)
     missing_documents = serializers.ListField(read_only=True)
@@ -121,6 +123,14 @@ class TeacherSelfSerializer(serializers.ModelSerializer):
             "expected_salary_lpa", "available_from", "notice_period_days",
             "headline", "about", "languages", "cv",
             "verification", "police_verified", "is_open_to_work",
+            # Designation is the title; `post` above is the band the board
+            # filters on. Both, because both are asked.
+            "designation", "designation_label", "teaching_preferences",
+            "medium", "medium_label", "exams", "classes_taught",
+            "address", "pincode", "state_ref", "district_ref", "block_ref",
+            "latitude", "longitude", "open_to_all_india",
+            "open_to_residential", "accommodation_preference", "food_preference",
+            "is_hidden",
             "completeness", "missing_documents", "documents", "experience",
             "created_at",
         )
@@ -144,6 +154,8 @@ class TeacherCardSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
     post_label = serializers.CharField(source="get_post_display", read_only=True)
     experience_label = serializers.CharField(source="get_experience_band_display", read_only=True)
+    designation_label = serializers.CharField(source="get_designation_display", read_only=True)
+    medium_label = serializers.CharField(source="get_medium_display", read_only=True)
     documents_verified = serializers.SerializerMethodField()
 
     class Meta:
@@ -153,6 +165,19 @@ class TeacherCardSerializer(serializers.ModelSerializer):
             "qualifications", "highest_qualification", "experience_band",
             "experience_label", "experience_years", "city", "headline", "about",
             "verification", "police_verified", "documents_verified",
+
+            # The professional answers a principal needs to shortlist. Added
+            # with the fuller profile; without them a teacher could fill in a
+            # designation and a medium and no school would ever see either.
+            "designation", "designation_label", "medium", "medium_label",
+            "exams", "classes_taught", "teaching_preferences",
+            "open_to_all_india", "open_to_residential",
+            "accommodation_preference", "food_preference",
+            # District, so a school can filter by area. Deliberately NOT
+            # `address`, `pincode`, `latitude` or `longitude`: a principal
+            # decides on an applicant from their qualifications and their
+            # district, and none of that decision needs a home address.
+            "district_ref", "state_ref",
         )
 
     def get_image(self, obj):

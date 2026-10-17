@@ -16,8 +16,22 @@ from django.utils import timezone
 
 from app import taxonomy
 from app.public_id import PublicId
+from location.models import NearbyQuerySet
 from app.uploads import upload_to, validate_document
 from user.models import User
+
+
+class TeacherQuerySet(NearbyQuerySet):
+    """`.near(lat, lng, km)` on teachers, for "a tutor close to us".
+
+    A plain manager would do for everything else here; this exists only so the
+    bounding-box filter lives in one place and every caller gets the same
+    cosine correction. See `location.NearbyQuerySet.near`.
+    """
+
+    def listable(self):
+        """Teachers who may appear in anyone's search."""
+        return self.filter(is_hidden=False)
 
 
 class TeacherProfile(models.Model):
@@ -82,8 +96,74 @@ class TeacherProfile(models.Model):
     # found a job should be able to go quiet without deleting their account.
     is_open_to_work = models.BooleanField(default=True, db_index=True)
 
+    # ── designation, medium, specialisation ─────────────────────────────
+    #
+    # `post` above is the band a salary is benchmarked against; this is the
+    # title on the appointment letter. Both are asked because both get asked.
+    # `save()` derives `post` from this, so nobody answers twice.
+    designation = models.CharField(
+        max_length=24, choices=taxonomy.DESIGNATION_CHOICES, blank=True, default="", db_index=True,
+    )
+    # Where they will work: school, coaching, home tuition — any combination.
+    # Not the same question as institution type; a teacher may want school work
+    # AND home tuition, which is two of these.
+    teaching_preferences = models.JSONField(default=list, blank=True)
+    medium = models.CharField(
+        max_length=12, choices=taxonomy.MEDIUM_CHOICES, blank=True, default="",
+    )
+    # JEE / NEET / Olympiad / boards. A coaching institute filters hard on this.
+    exams = models.JSONField(default=list, blank=True)
+    # Nursery to Class 12, for school posts and for matching tuition requests.
+    classes_taught = models.JSONField(default=list, blank=True)
+
+    # ── where they are ──────────────────────────────────────────────────
+    #
+    # The `city`/`state` strings above stay and keep working. These are the
+    # structured answer: a closed list the two sides spell the same way, which
+    # is what makes "find teachers in this block" a filter and not a LIKE.
+    address = models.TextField(blank=True, default="")
+    pincode = models.CharField(max_length=10, blank=True, default="", db_index=True)
+    state_ref = models.ForeignKey(
+        "location.State", on_delete=models.SET_NULL, null=True, blank=True, related_name="teachers",
+    )
+    district_ref = models.ForeignKey(
+        "location.District", on_delete=models.SET_NULL, null=True, blank=True, related_name="teachers",
+    )
+    block_ref = models.ForeignKey(
+        "location.Block", on_delete=models.SET_NULL, null=True, blank=True, related_name="teachers",
+    )
+    # Only ever written with the teacher's permission (the browser asks). Null
+    # is the normal state, and every "nearby" query excludes a null.
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    # "All India" — willing to go anywhere, so district filters should not
+    # exclude them.
+    open_to_all_india = models.BooleanField(default=False, db_index=True)
+
+    # ── residential posts ───────────────────────────────────────────────
+    #
+    # A residential post is a different job, and these four are what decide
+    # whether someone will take it. Asked symmetrically of the vacancy.
+    open_to_residential = models.BooleanField(default=False, db_index=True)
+    accommodation_preference = models.CharField(
+        max_length=16, choices=taxonomy.ACCOMMODATION_CHOICES, blank=True, default="",
+    )
+    food_preference = models.CharField(
+        max_length=8, choices=taxonomy.FOOD_CHOICES, blank=True, default="",
+    )
+
+    # ── visibility ──────────────────────────────────────────────────────
+    #
+    # "Profile hide/unhide" from the brief. Distinct from `is_open_to_work`:
+    # that says "I would move for the right thing", this says "do not show me
+    # to anyone at all", which is what a teacher wants while their current
+    # employer might be looking.
+    is_hidden = models.BooleanField(default=False, db_index=True)
+
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = TeacherQuerySet.as_manager()
 
     # The dashboard shows "Ninety percent done, one reference to go", so the
     # number has to mean something. These are the fields that decide whether an
@@ -132,6 +212,13 @@ class TeacherProfile(models.Model):
             self.subjects = list(seen.values())
         if self.experience_years is not None:
             self.experience_band = taxonomy.experience_band(self.experience_years)
+        # `post` is the band the board filters on; `designation` is the title
+        # the teacher calls themselves. Deriving one from the other here is
+        # what stops anyone being asked the same question twice. A row with a
+        # `post` and no `designation` — everything written before that field
+        # existed — is left exactly as it is.
+        if self.designation:
+            self.post = taxonomy.post_for_designation(self.designation)
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
