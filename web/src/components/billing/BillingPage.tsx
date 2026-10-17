@@ -8,12 +8,11 @@ import Column from "@/components/common/Column";
 import Row from "@/components/common/Row";
 import QueryState from "@/components/workspace/QueryState";
 import { loadRazorpay } from "@/components/billing/razorpay";
-import { type Role } from "@/Hooks/useSession";
 import { cn } from "@/lib/cn";
 import ApiController from "@/networking";
 import { ClientError } from "@/networking/error-type";
 import { queryClient } from "@/queryClient";
-import type { Order, Plan } from "@/networking/types";
+import type { Order, Plan, PlanAudience } from "@/networking/types";
 
 /**
  * Paying, and what has been paid. One component, both workspaces.
@@ -32,7 +31,7 @@ import type { Order, Plan } from "@/networking/types";
  * below says exactly that rather than telling someone their successful payment
  * failed.
  */
-export default function BillingPage({ role }: { role: Role }) {
+export default function BillingPage({ role }: { role: PlanAudience }) {
   const [busy, setBusy] = useState<string | null>(null);
 
   const plans = useQuery({

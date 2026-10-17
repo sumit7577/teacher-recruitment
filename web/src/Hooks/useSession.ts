@@ -19,12 +19,13 @@ import { queryClient } from "@/queryClient";
  * owns "who is signed in", so no screen reads localStorage itself.
  */
 
-export type Role = "teacher" | "school" | "staff";
+export type Role = "teacher" | "school" | "student" | "staff";
 
 /** Where each audience's workspace lives. */
 export const HOME_FOR: Record<Role, string> = {
   teacher: "/teacher",
   school: "/school",
+  student: "/student",
   staff: "/panel",
 };
 

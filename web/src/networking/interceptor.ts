@@ -50,7 +50,7 @@ const SESSION_KEY = "session";
 
 export interface Session {
   key: string;
-  role: "teacher" | "school" | "staff";
+  role: "teacher" | "school" | "student" | "staff";
   /** A cached copy of the signed-in user, so the header can draw a name before
    *  `getMe` resolves. `email` is nullable because most teachers have none —
    *  matching `UserResp` rather than narrowing it, or assigning a response to

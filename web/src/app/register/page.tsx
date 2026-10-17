@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import RegisterForm from "@/components/auth/RegisterForm";
+import { signupRoleFromParam } from "@/Hooks/roleParam";
 import type { Role } from "@/Hooks/useSession";
 import { serverGetData } from "@/networking/server";
 import type { VacancyFacets } from "@/networking/types";
@@ -19,7 +20,7 @@ function one(value: string | string[] | undefined): string {
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<Search> }) {
   const params = await searchParams;
   const asParam = one(params.as);
-  const role: Role = asParam === "school" ? "school" : "teacher";
+  const role: Role = signupRoleFromParam(asParam);
   // The taxonomy for the dropdowns, fetched on the server so the form has its
   // options in the first paint rather than after a round trip.
   const facets = await serverGetData<VacancyFacets>("/v1/public/vacancies/filters/", {

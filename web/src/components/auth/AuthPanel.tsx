@@ -29,6 +29,15 @@ const COPY: Record<Role, { heading: string; lead: string; points: { Icon: typeof
       { Icon: BellAlertIcon, text: "A notification the moment a vacancy in your subject opens." },
     ],
   },
+  student: {
+    heading: "A tutor who actually comes, and keeps coming",
+    lead: "Say what you need. Teachers near you ask to take it, and you choose.",
+    points: [
+      { Icon: DocumentCheckIcon, text: "Every teacher's certificates are checked by our office before you ever meet them." },
+      { Icon: CheckBadgeIcon, text: "Your address and phone number are never shown — only the class and your area." },
+      { Icon: BellAlertIcon, text: "You accept who you like. Nobody can message you until you do." },
+    ],
+  },
   school: {
     heading: "Screened teachers, not a stack of CVs",
     lead: "Post a vacancy and read applicants whose documents our office has already checked.",

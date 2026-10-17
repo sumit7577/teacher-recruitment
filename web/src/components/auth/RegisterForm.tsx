@@ -82,6 +82,14 @@ export default function RegisterForm({
         router.replace(HOME_FOR[data.role]);
         return;
       }
+      // There are two profile steps in this wizard — what a teacher teaches,
+      // and what a school is. A parent's profile is four fields and lives on
+      // their own workspace, so send them there rather than growing a third
+      // step that duplicates it.
+      if (data.role === "student") {
+        router.replace("/student/profile");
+        return;
+      }
       setStep("profile");
     },
     onError: fail,

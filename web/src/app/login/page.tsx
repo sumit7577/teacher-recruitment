@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import SignInForm from "@/components/auth/SignInForm";
+import { roleFromParam } from "@/Hooks/roleParam";
 import type { Role } from "@/Hooks/useSession";
 
 export const metadata: Metadata = {
@@ -19,6 +20,6 @@ function one(value: string | string[] | undefined): string {
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Search> }) {
   const params = await searchParams;
   const asParam = one(params.as);
-  const role: Role = asParam === "school" ? "school" : asParam === "staff" ? "staff" : "teacher";
+  const role: Role = roleFromParam(asParam);
   return <SignInForm initialRole={role} next={one(params.next) || undefined} />;
 }

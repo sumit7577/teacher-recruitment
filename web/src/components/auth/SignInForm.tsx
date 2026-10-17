@@ -20,6 +20,7 @@ import { queryClient } from "@/queryClient";
 const SUB: Record<Role, string> = {
   teacher: "Sign in to see the vacancies matching your subject.",
   school: "Sign in to post a vacancy and read your applicants.",
+  student: "Sign in to post what you need and answer interested teachers.",
   staff: "Use the number the office registered for you.",
 };
 
@@ -54,7 +55,15 @@ export default function SignInForm({
     (needsProfile: boolean, signedInAs: Role) => {
       queryClient.clear();
       if (needsProfile) {
-        router.replace(`/register?as=${signedInAs}&step=profile`);
+        // The register wizard asks a teacher what they teach and a school what
+        // it is. It has no third form, and a parent does not need one — their
+        // profile is four fields on their own workspace. Sending them into the
+        // wizard is how `?as=student` ended up on the teacher questions.
+        router.replace(
+          signedInAs === "student"
+            ? "/student/profile"
+            : `/register?as=${signedInAs}&step=profile`,
+        );
         return;
       }
       const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
