@@ -146,3 +146,160 @@ VERIFICATION_CHOICES = (
     (VERIFICATION_VERIFIED, "Verified"),
     (VERIFICATION_REJECTED, "Rejected"),
 )
+
+
+# ── Designations ────────────────────────────────────────────────────────────
+#
+# The requirements document names twenty-one roles. `POST_CHOICES` above has
+# seven, and they are not a worse version of this list — they are a different
+# question. A post is the *band* a vacancy sits in and what a salary is
+# benchmarked against; a designation is the job title on the appointment
+# letter. "PGT" is a band. "Music Teacher" is a title, and it is a PGT.
+#
+# Both are kept because both are asked. A teacher picks a designation because
+# that is what they call themselves; the board filters on post because that is
+# what a principal searches. `DESIGNATION_POST` maps one to the other so a
+# teacher who says "Librarian" is filed under non-teaching without being asked
+# a second question they would get wrong.
+DESIGNATION_CHOICES = (
+    ("pgt", "PGT — Post Graduate Teacher"),
+    ("tgt", "TGT — Trained Graduate Teacher"),
+    ("prt", "PRT — Primary Teacher"),
+    ("pre_primary", "Pre-primary / NTT"),
+    ("principal", "Principal"),
+    ("vice_principal", "Vice-Principal"),
+    ("academic_coordinator", "Academic Coordinator"),
+    ("sports", "Sports Teacher"),
+    ("music", "Music Teacher"),
+    ("fine_arts", "Fine Arts Teacher"),
+    ("dance", "Dance Teacher"),
+    ("counsellor", "Counsellor"),
+    ("wellness", "Wellness Teacher"),
+    ("special_educator", "Special Educator"),
+    ("librarian", "Librarian"),
+    ("lab_assistant", "Lab Assistant"),
+    ("it", "IT / Computer"),
+    ("accounts", "Accounts"),
+    ("cashier", "Cashier"),
+    ("front_office", "Front Office (PRO)"),
+    ("office_incharge", "Office Incharge"),
+    ("hr_head", "HR Head"),
+    ("hostel_warden", "Hostel Warden / Superintendent"),
+    ("housekeeping", "Housekeeping Supervisor"),
+    ("transport", "Transport Incharge"),
+    ("other", "Any other"),
+)
+
+# Which band each designation belongs to, so the existing vacancy board and
+# every match already written keep working unchanged.
+DESIGNATION_POST = {
+    "pgt": POST_PGT,
+    "tgt": POST_TGT,
+    "prt": POST_PRT,
+    "pre_primary": POST_PRE_PRIMARY,
+    "principal": POST_LEADERSHIP,
+    "vice_principal": POST_LEADERSHIP,
+    "academic_coordinator": POST_LEADERSHIP,
+    "sports": POST_TGT,
+    "music": POST_TGT,
+    "fine_arts": POST_TGT,
+    "dance": POST_TGT,
+    "counsellor": POST_NON_TEACHING,
+    "wellness": POST_NON_TEACHING,
+    "special_educator": POST_TGT,
+    "librarian": POST_NON_TEACHING,
+    "lab_assistant": POST_NON_TEACHING,
+    "it": POST_NON_TEACHING,
+    "accounts": POST_NON_TEACHING,
+    "cashier": POST_NON_TEACHING,
+    "front_office": POST_NON_TEACHING,
+    "office_incharge": POST_NON_TEACHING,
+    "hr_head": POST_NON_TEACHING,
+    "hostel_warden": POST_NON_TEACHING,
+    "housekeeping": POST_NON_TEACHING,
+    "transport": POST_NON_TEACHING,
+    "other": POST_NON_TEACHING,
+}
+
+
+def post_for_designation(designation: str) -> str:
+    """The band a designation falls into. Used when a teacher picks a title and
+    when a vacancy is filed, so neither side has to answer the same question
+    twice."""
+    return DESIGNATION_POST.get(designation or "", POST_NON_TEACHING)
+
+
+# ── Teaching preference ─────────────────────────────────────────────────────
+#
+# Where a teacher is willing to work. Not the same as institution type: a
+# teacher may want school work AND home tuition, which is two of these and one
+# of those. Stored as a list on the profile.
+TEACHING_PREFERENCE_SCHOOL = "school"
+TEACHING_PREFERENCE_COACHING = "coaching"
+TEACHING_PREFERENCE_TUITION = "home_tuition"
+TEACHING_PREFERENCE_CHOICES = (
+    (TEACHING_PREFERENCE_SCHOOL, "School teaching"),
+    (TEACHING_PREFERENCE_COACHING, "Coaching institute"),
+    (TEACHING_PREFERENCE_TUITION, "Home tuition"),
+)
+
+# ── Teaching medium ─────────────────────────────────────────────────────────
+#
+# Asked of a teacher, a vacancy, a coaching institute and a tuition
+# requirement, so it lives here rather than being redefined four times.
+MEDIUM_CHOICES = (
+    ("english", "English"),
+    ("hindi", "Hindi"),
+    ("both", "English and Hindi"),
+    ("regional", "Regional language"),
+)
+
+# ── Competitive-exam specialisation ─────────────────────────────────────────
+EXAM_CHOICES = (
+    ("jee", "JEE"),
+    ("neet", "NEET"),
+    ("olympiad", "Olympiad"),
+    ("ntse", "NTSE"),
+    ("boards", "Board exams"),
+    ("foundation", "Foundation / 9th–10th"),
+)
+
+# ── Residential terms ───────────────────────────────────────────────────────
+#
+# A residential post is a different job, and these are the questions that
+# decide whether someone will take it. Asked symmetrically — a teacher says
+# what they want, a vacancy says what it offers.
+ACCOMMODATION_CHOICES = (
+    ("separate_room", "Separate room"),
+    ("shared_room", "Shared room"),
+    ("dormitory", "Dormitory"),
+    ("family_quarter", "Family quarter"),
+    ("none", "No accommodation"),
+)
+
+FOOD_CHOICES = (
+    ("veg", "Vegetarian"),
+    ("non_veg", "Non-vegetarian"),
+    ("both", "Both"),
+)
+
+FACILITY_CHOICES = (
+    ("meals", "Meals provided"),
+    ("laundry", "Laundry"),
+    ("wifi", "Wi-Fi"),
+    ("transport", "Transport"),
+    ("medical", "Medical"),
+    ("gym", "Gym"),
+    ("ac", "Air conditioning"),
+)
+
+# ── Classes, Nursery to 12 ──────────────────────────────────────────────────
+#
+# For a student/parent posting a tuition requirement, and for a teacher saying
+# which classes they take. Ordered as a school prospectus orders them.
+CLASS_CHOICES = (
+    ("nursery", "Nursery"),
+    ("lkg", "LKG"),
+    ("ukg", "UKG"),
+    *((str(n), f"Class {n}") for n in range(1, 13)),
+)
