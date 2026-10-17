@@ -23,6 +23,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { href: "/teacher/vacancies", label: "Vacancies", icon: "briefcase", nested: true },
     { href: "/teacher/applications", label: "My applications", icon: "clipboard", nested: true },
     { href: "/teacher/profile", label: "My profile", icon: "user", nested: true },
+    { href: "/teacher/billing", label: "Payments", icon: "card" },
     { href: "/teacher/notifications", label: "Notifications", icon: "bell" },
   ],
   school: [
@@ -30,6 +31,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { href: "/school/vacancies", label: "Our vacancies", icon: "briefcase", nested: true },
     { href: "/school/applicants", label: "Applicants", icon: "users", nested: true },
     { href: "/school/profile", label: "Our institution", icon: "building" },
+    { href: "/school/billing", label: "Payments", icon: "card" },
   ],
   staff: [
     { href: "/panel", label: "Dashboard", icon: "home" },
@@ -37,6 +39,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { href: "/panel/applications", label: "Applications", icon: "clipboard", nested: true },
     { href: "/panel/teachers", label: "Teachers", icon: "user", nested: true },
     { href: "/panel/schools", label: "Institutions", icon: "building", nested: true },
+    { href: "/panel/payments", label: "Payments", icon: "card", nested: true },
     { href: "/panel/enquiries", label: "Enquiries", icon: "inbox" },
     { href: "/panel/notifications", label: "Push", icon: "bell" },
     { href: "/panel/site", label: "Website text", icon: "cog", nested: true },

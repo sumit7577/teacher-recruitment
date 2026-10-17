@@ -33,6 +33,10 @@ import type {
   VacancyFacets,
   VacancyPanel,
   VacancyQuery,
+  Plan,
+  CheckoutIntent,
+  Order,
+  OrderPanel,
 } from "./types";
 
 /**
@@ -285,6 +289,68 @@ const getStaff = async (): Promise<StaffMember[]> =>
 const resetUserPassword = async (phone: string): Promise<PasswordReset> =>
   unwrap((await client.post(`${API_BASE}/v1/panel/dashboard/password-reset/`, { phone })).data);
 
+
+/** Ask for a code to be mailed to an address you are claiming. Signed in —
+ *  this proves *your* address, which is a different problem from the two
+ *  password-reset calls below and is allowed to answer honestly about
+ *  whether the address is already taken. */
+const requestEmailCode = async (email: string): Promise<{ expires_in_minutes: number }> =>
+  unwrap((await client.post(`${API_BASE}/v1/auth/email/code`, { email })).data);
+
+const verifyEmail = async (email: string, code: string): Promise<{ email: string }> =>
+  unwrap((await client.post(`${API_BASE}/v1/auth/email/verify`, { email, code })).data);
+
+/** Start a reset. **Always resolves**, whether or not the address is on an
+ *  account — the backend answers identically either way so this endpoint
+ *  cannot be used to ask which addresses hold accounts. Do not add a branch
+ *  here that reintroduces the difference. */
+const forgotPassword = async (email: string): Promise<Envelope<never>> =>
+  (await client.post(`${API_BASE}/v1/auth/password/forgot`, { email })).data;
+
+/** The code, and the password it buys. Every existing session dies on
+ *  success, including any this browser is holding. */
+const resetPasswordWithCode = async (
+  email: string, code: string, newPassword: string,
+): Promise<Envelope<never>> =>
+  (await client.post(`${API_BASE}/v1/auth/password/reset`, {
+    email, code, new_password: newPassword,
+  })).data;
+
+// ── payments ────────────────────────────────────────────────────────────────
+
+const getPlans = async (audience?: Role): Promise<Plan[]> =>
+  (await client.get(`${API_BASE}/v1/public/plans/`, {
+    params: audience ? { audience } : undefined,
+  })).data;
+
+/** Open a checkout. The amount is decided by the server from the plan code —
+ *  there is deliberately no amount parameter here, and adding one would not
+ *  work: the backend reads the price off the plan and ignores the body. */
+const createOrder = async (plan: string): Promise<CheckoutIntent> =>
+  unwrap((await client.post(`${API_BASE}/v1/pay/order`, { plan })).data);
+
+/** Hand Razorpay's callback back to us. This is a *report*, not proof — the
+ *  server re-asks Razorpay what actually happened before it settles anything,
+ *  and the webhook settles it independently. */
+const verifyPayment = async (payload: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}): Promise<Order> =>
+  unwrap((await client.post(`${API_BASE}/v1/pay/verify`, payload)).data);
+
+const getMyOrders = async (): Promise<Paginated<Order>> =>
+  (await client.get(`${API_BASE}/v1/pay/orders`)).data;
+
+const panelPayments = async (query: { status?: string; q?: string; page?: number } = {}):
+  Promise<Paginated<OrderPanel>> =>
+  (await client.get(`${API_BASE}/v1/panel/payments/`, { params: clean(query as Params) })).data;
+
+const panelRefund = async (
+  id: string, body: { amount_paise?: number; reason?: string } = {},
+): Promise<OrderPanel> =>
+  unwrap((await client.post(`${API_BASE}/v1/panel/payments/${id}/refund/`, body)).data);
+
 const panelVacancies = async (query: VacancyQuery = {}): Promise<Paginated<VacancyPanel>> =>
   (await client.get(`${API_BASE}/v1/panel/vacancies/`, { params: clean(query as Params) })).data;
 
@@ -429,6 +495,9 @@ const ApiController = {
   // auth
   signUp, signInWithPassword, setPassword, signInWithGoogle, linkGoogle,
   getMe, updateMe, signOut, readSession,
+  requestEmailCode, verifyEmail, forgotPassword, resetPasswordWithCode,
+  // payments
+  getPlans, createOrder, verifyPayment, getMyOrders, panelPayments, panelRefund,
   // teacher
   getTeacherProfile, createTeacherProfile, updateTeacherProfile,
   getTeacherDocuments, uploadTeacherDocument, deleteTeacherDocument,

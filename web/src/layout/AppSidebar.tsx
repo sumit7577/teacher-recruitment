@@ -7,6 +7,7 @@ import {
   ChevronLeftIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
+  CreditCardIcon,
   HomeIcon,
   InboxIcon,
   UserCircleIcon,
@@ -34,6 +35,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   bell: BellIcon,
   inbox: InboxIcon,
   cog: Cog6ToothIcon,
+  card: CreditCardIcon,
 };
 
 export default function AppSidebar({ role, brand }: { role: Role; brand: string }) {

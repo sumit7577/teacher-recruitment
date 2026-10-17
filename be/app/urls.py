@@ -23,18 +23,29 @@ the same thing with `institute/team_urls.py` and `course/schedule_urls.py`.
 from django.urls import include, path
 
 from app import views
+from payments import views as payment_views
 
 urlpatterns = [
     path("", views.health),
     path("healthz/", views.health, name="health"),
 
+    # ── Razorpay, talking to us ────────────────────────────────────────────
+    # Not under v1/ and not behind any audience: this is a machine calling us,
+    # authenticated by an HMAC of the raw body rather than by a token. It is a
+    # plain Django view for that reason — see payments/views.py.
+    path("razorpay-webhook/", payment_views.razorpay_webhook, name="razorpay-webhook"),
+
     # ── public website (anonymous) ─────────────────────────────────────────
     path("v1/public/vacancies/", include("vacancy.public_urls")),
     path("v1/public/site/", include("cms.public_urls")),
     path("v1/public/enquiry/", include("cms.enquiry_urls")),
+    path("v1/public/plans/", include("payments.public_urls")),
 
     # ── auth (all audiences) ───────────────────────────────────────────────
     path("v1/auth/", include("user.urls")),
+
+    # ── paying (any signed-in account) ─────────────────────────────────────
+    path("v1/pay/", include("payments.urls")),
 
     # ── teacher ────────────────────────────────────────────────────────────
     path("v1/teacher/profile/", include("teacher.urls")),
@@ -56,4 +67,5 @@ urlpatterns = [
     path("v1/panel/site/", include("cms.panel_urls")),
     path("v1/panel/enquiries/", include("cms.enquiry_panel_urls")),
     path("v1/panel/notifications/", include("notifications.panel_urls")),
+    path("v1/panel/payments/", include("payments.panel_urls")),
 ]

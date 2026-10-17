@@ -11,6 +11,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
+import EmailCard from "@/components/account/EmailCard";
 import { ChipPicker, TagInput } from "@/components/auth/ChipMultiSelect";
 import Column from "@/components/common/Column";
 import Field from "@/components/common/Field";
@@ -78,6 +79,8 @@ export default function TeacherProfilePage() {
               tone={profile.data.completeness === 100 ? "ok" : "accent"}
             />
           </Column>
+
+          <EmailCard />
 
           <Documents profile={profile.data} />
           <MatchingFields profile={profile.data} facets={facets.data ?? null} />

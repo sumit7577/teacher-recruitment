@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 
+import EmailCard from "@/components/account/EmailCard";
 import Column from "@/components/common/Column";
 import Field from "@/components/common/Field";
 import Row from "@/components/common/Row";
@@ -28,6 +29,10 @@ export default function SchoolProfilePage() {
       {school.data ? (
         <>
           <VerificationBanner school={school.data} />
+          {/* The address on the *account* — the one that signs in and receives
+              password resets. `office_email` in Details below is a different
+              thing: where applicants should write. */}
+          <EmailCard />
           <Certificate school={school.data} />
           <Details school={school.data} facets={facets.data ?? null} />
         </>

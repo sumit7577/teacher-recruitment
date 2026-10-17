@@ -41,6 +41,10 @@ export interface UserResp {
   id: string;
   name: string;
   email: string | null;
+  /** Null until a code sent to `email` came back correct. An unverified
+   *  address may be a typo for a stranger's mailbox, so nothing sensitive —
+   *  least of all a password reset — is ever sent to one. */
+  email_verified_at: string | null;
   phone: string;
   city: string;
   state: string;
@@ -537,4 +541,68 @@ export interface PasswordReset {
   phone: string;
   name: string;
   temporary_password: string;
+}
+
+// ── payments ────────────────────────────────────────────────────────────────
+
+export interface Plan {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  audience: "teacher" | "school";
+  interval: "once" | "monthly" | "yearly";
+  /** Paise. Integers throughout — a float rupee is a rounding error waiting
+   *  for a reconciliation meeting. Format with `amount_rupees`, never compute
+   *  with it. */
+  amount_paise: number;
+  amount_rupees: string;
+  grants_days: number;
+  grants_vacancies: number;
+}
+
+export type OrderStatus = "created" | "paid" | "failed" | "refunded";
+
+/** What the payer is allowed to see about their own order. Deliberately
+ *  without `failure_reason` and the Razorpay ids — the bank's exact wording is
+ *  for the staff member they ring, not for the payment screen. */
+export interface Order {
+  id: string;
+  plan_name: string;
+  plan_code: string;
+  amount_paise: number;
+  amount_rupees: string;
+  currency: string;
+  status: OrderStatus;
+  method: string;
+  receipt_no: string;
+  created_at: string;
+  paid_at: string | null;
+}
+
+/** The staff view: everything, including who refunded what and why. */
+export interface OrderPanel extends Omit<Order, "plan_code"> {
+  user_name: string;
+  user_phone: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string | null;
+  failure_reason: string;
+  refunded_paise: number;
+  refunded_at: string | null;
+  refunded_by_name: string;
+  refund_reason: string;
+}
+
+/** Everything Razorpay's checkout widget needs. `key_id` is public by design —
+ *  it is in the page source of every site using Razorpay. The secret is not
+ *  here and never reaches the browser. */
+export interface CheckoutIntent {
+  order: Order;
+  razorpay_order_id: string;
+  amount_paise: number;
+  currency: string;
+  key_id: string;
+  name: string;
+  email: string;
+  phone: string;
 }
