@@ -68,6 +68,19 @@ def _profile_summary(user, role: str) -> dict:
             "status": profile.status,
             "outstanding": profile.outstanding,
         }
+    if role == "student":
+        profile = getattr(user, "student_profile", None)
+        if profile is None:
+            return {"needs_profile": True}
+        # `needs_consent` is surfaced here and not left to be discovered,
+        # because it is the one thing that makes an otherwise complete profile
+        # invisible to every teacher. The client opens the consent screen on it.
+        return {
+            "needs_profile": False,
+            "student_id": profile.id,
+            "needs_consent": profile.needs_consent,
+            "is_minor": profile.is_minor,
+        }
     return {"needs_profile": False}
 
 

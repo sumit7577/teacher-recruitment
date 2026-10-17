@@ -199,3 +199,49 @@ class IsStaff(BasePermission):
         if _audience(request) != "staff":
             return False
         return bool(user.is_staff_member)
+
+
+class IsStudent(BasePermission):
+    """A student or parent, on a student token. Sets `request.student`.
+
+    Same shape as `IsTeacher` and `IsSchool`, and the same contract: behind
+    this, `request.student` is set and is never None.
+
+    Consent is deliberately **not** checked here. A minor whose guardian has
+    not yet consented must be able to sign in, fill in their profile and ask
+    their guardian to agree — refusing them the API is how the consent screen
+    becomes unreachable. What consent gates is being *seen and contacted*, and
+    that lives in `StudentProfile.contactable()` and `Interest.may_open()`,
+    next to the data it protects. (Same reasoning as `IsSchool` and
+    verification.)
+    """
+
+    message = "This is the student area — sign in as a student or parent to continue."
+
+    def has_permission(self, request, view) -> bool:
+        user = getattr(request, "user", None)
+        if not (user and getattr(user, "is_authenticated", False)):
+            return False
+        if _audience(request) != "student":
+            return False
+        profile = getattr(user, "student_profile", None)
+        if profile is None:
+            return False
+        _stash(request, student=profile)
+        return True
+
+
+class IsStudentAudience(BasePermission):
+    """A student token, profile or no profile.
+
+    Exists for exactly one endpoint — creating the profile that `IsStudent`
+    would otherwise require — mirroring `IsTeacherAudience`.
+    """
+
+    message = "Sign in as a student or parent to continue."
+
+    def has_permission(self, request, view) -> bool:
+        user = getattr(request, "user", None)
+        if not (user and getattr(user, "is_authenticated", False)):
+            return False
+        return _audience(request) == "student"

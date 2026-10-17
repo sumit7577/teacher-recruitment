@@ -107,6 +107,8 @@ class User(models.Model):
             found.append("teacher")
         if hasattr(self, "school_profile"):
             found.append("school")
+        if hasattr(self, "student_profile"):
+            found.append("student")
         if self.is_staff_member:
             found.append("staff")
         return found
@@ -140,7 +142,10 @@ class AuthToken(models.Model):
     # Which workspace this token was issued for. A teacher token must not open
     # the panel even if the same person is also staff — the audience is decided
     # at sign-in, and re-checked on every request by the permission class.
-    ROLE_CHOICES = (("teacher", "Teacher"), ("school", "School"), ("staff", "Staff"))
+    ROLE_CHOICES = (
+        ("teacher", "Teacher"), ("school", "School"),
+        ("student", "Student or parent"), ("staff", "Staff"),
+    )
     role = models.CharField(max_length=16, choices=ROLE_CHOICES, db_index=True)
     device = models.CharField(max_length=120, blank=True, default="")
     created = models.DateTimeField(default=timezone.now)

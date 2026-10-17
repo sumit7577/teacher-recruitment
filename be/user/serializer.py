@@ -11,7 +11,7 @@ from rest_framework import serializers
 from user.models import User
 from user.service import is_valid_phone, normalise_phone
 
-ROLE_CHOICES = ("teacher", "school", "staff")
+ROLE_CHOICES = ("teacher", "school", "student", "staff")
 
 
 class PhoneField(serializers.CharField):
