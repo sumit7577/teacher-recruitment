@@ -66,6 +66,9 @@ class Notification(models.Model):
         ("offer", "An offer"),
         ("broadcast", "From the office"),
         ("account", "Account"),
+        # Sections 9 and 12 — a heart, and a chat message.
+        ("interest", "An interest request"),
+        ("message", "A new message"),
     )
 
     id = PublicId(prefix="ntf")

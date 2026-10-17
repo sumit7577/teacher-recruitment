@@ -70,9 +70,12 @@ INSTALLED_APPS = [
     # Our apps. `app` owns integrations + shared plumbing; every other app owns
     # its own models/serializers/views/urls (CLAUDE.md §2).
     "app",
+    "location",
     "user",
     "teacher",
     "school",
+    "student",
+    "connect",
     "vacancy",
     "application",
     "cms",
