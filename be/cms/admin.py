@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from cms.models import Enquiry, Page, ProcessStep, Service, SiteSetting, TeamMember, Testimonial
+from cms.models import Enquiry, Faq, Page, ProcessStep, Service, SiteSetting, SuccessStory, TeamMember, Testimonial
 
 
 @admin.register(SiteSetting)
@@ -86,3 +86,18 @@ class EnquiryAdmin(ModelAdmin):
     list_filter = ("side", "status", "created_at")
     search_fields = ("name", "phone", "email", "institution_name")
     readonly_fields = ("id", "created_at", "ip")
+
+
+@admin.register(Faq)
+class FaqAdmin(ModelAdmin):
+    list_display = ("question", "audience", "order", "is_published")
+    list_filter = ("audience", "is_published")
+    search_fields = ("question", "answer")
+
+
+@admin.register(SuccessStory)
+class SuccessStoryAdmin(ModelAdmin):
+    list_display = ("headline", "teacher_name", "institution_name", "city",
+                    "days_to_place", "order", "is_published")
+    list_filter = ("is_published", "teacher_post")
+    search_fields = ("headline", "teacher_name", "institution_name")

@@ -10,7 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from app.responses import fail, ok
-from cms.models import Enquiry, Page, ProcessStep, Service, SiteSetting, TeamMember, Testimonial
+from cms.models import Enquiry, Faq, Page, ProcessStep, Service, SiteSetting, SuccessStory, TeamMember, Testimonial
 from cms.serializer import (
     EnquiryReadSerializer,
     EnquirySerializer,
@@ -21,6 +21,8 @@ from cms.serializer import (
     SiteSettingWriteSerializer,
     TeamMemberSerializer,
     TestimonialSerializer,
+    FaqSerializer,
+    SuccessStorySerializer,
 )
 from user.auth import CustomAuthentication, IsStaff
 
@@ -56,6 +58,14 @@ class PublicSiteView(APIView):
             # separately because it is the one number on the page that must not
             # be stale — "47 vacancies" over an empty board is the worst
             # possible first impression.
+            # Section 8 of the brief. Both sides ask different questions, so
+            # the client groups by `audience` rather than printing one list.
+            "faqs": FaqSerializer(
+                Faq.objects.filter(is_published=True), many=True
+            ).data,
+            "stories": SuccessStorySerializer(
+                SuccessStory.objects.filter(is_published=True), many=True
+            ).data,
             "live_vacancies": Vacancy.objects.public().count(),
         })
 
@@ -309,3 +319,37 @@ class PanelEnquiryDetail(APIView):
             return fail("Nothing to change.")
         enquiry.save(update_fields=changed)
         return ok("Saved.", EnquiryReadSerializer(enquiry).data)
+
+
+class PanelFaqList(ListCreateAPIView):
+    """GET/POST v1/panel/site/faqs/"""
+
+    authentication_classes = [CustomAuthentication]
+    permission_classes = [IsStaff]
+    serializer_class = FaqSerializer
+    pagination_class = None
+    queryset = Faq.objects.all()
+
+
+class PanelFaqDetail(RetrieveUpdateDestroyAPIView):
+    authentication_classes = [CustomAuthentication]
+    permission_classes = [IsStaff]
+    serializer_class = FaqSerializer
+    queryset = Faq.objects.all()
+
+
+class PanelStoryList(ListCreateAPIView):
+    """GET/POST v1/panel/site/stories/"""
+
+    authentication_classes = [CustomAuthentication]
+    permission_classes = [IsStaff]
+    serializer_class = SuccessStorySerializer
+    pagination_class = None
+    queryset = SuccessStory.objects.all()
+
+
+class PanelStoryDetail(RetrieveUpdateDestroyAPIView):
+    authentication_classes = [CustomAuthentication]
+    permission_classes = [IsStaff]
+    serializer_class = SuccessStorySerializer
+    queryset = SuccessStory.objects.all()

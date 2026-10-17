@@ -288,3 +288,87 @@ class Enquiry(models.Model):
         managed = True
         db_table = "site_enquiry"
         ordering = ("-created_at",)
+
+
+class Faq(models.Model):
+    """A question the office answers on the telephone twenty times a week.
+
+    Section 8 of the brief asks for FAQs on the homepage. `audience` exists
+    because the two sides ask completely different questions — a teacher wants
+    to know whether registering costs anything, a school wants to know how long
+    a shortlist takes — and one undifferentiated list makes each side read past
+    half of it.
+    """
+
+    AUDIENCE_CHOICES = (
+        ("teacher", "Teachers"),
+        ("institution", "Institutions"),
+        ("student", "Students and parents"),
+        ("all", "Everyone"),
+    )
+
+    id = PublicId(prefix="faq")
+    question = models.CharField(max_length=240)
+    answer = models.TextField()
+    audience = models.CharField(
+        max_length=12, choices=AUDIENCE_CHOICES, default="all", db_index=True,
+    )
+    order = models.PositiveSmallIntegerField(default=0, db_index=True)
+    is_published = models.BooleanField(default=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return self.question
+
+    class Meta:
+        managed = True
+        db_table = "cms_faq"
+        ordering = ("order", "id")
+        verbose_name = "FAQ"
+        verbose_name_plural = "FAQs"
+
+
+class SuccessStory(models.Model):
+    """"We placed her at DAV Patna in eleven days."
+
+    Distinct from `Testimonial`, which is a quote. A success story is an
+    outcome with numbers on it — who, where, how long — and that is what
+    persuades a principal who has been let down by a consultant before. A quote
+    saying "great service" does not.
+
+    Nothing here is a foreign key to a real teacher or school. Publishing a
+    named placement needs the consent of both sides, and the office will often
+    have permission to say "a CBSE school in Patna" and not the name. Free text
+    is what lets them tell the truth at whatever level of detail they are
+    allowed to.
+    """
+
+    id = PublicId(prefix="sty")
+    headline = models.CharField(max_length=200)
+    body = models.TextField(blank=True, default="")
+
+    teacher_name = models.CharField(max_length=140, blank=True, default="")
+    teacher_post = models.CharField(
+        max_length=20, choices=taxonomy.POST_CHOICES, blank=True, default="",
+    )
+    institution_name = models.CharField(max_length=180, blank=True, default="")
+    city = models.CharField(max_length=80, blank=True, default="")
+    # The number that does the persuading.
+    days_to_place = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    photo = models.ImageField(
+        upload_to=upload_to("cms", "stories"), blank=True, null=True,
+        max_length=500, validators=[validate_image],
+    )
+    order = models.PositiveSmallIntegerField(default=0, db_index=True)
+    is_published = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self) -> str:
+        return self.headline
+
+    class Meta:
+        managed = True
+        db_table = "cms_success_story"
+        ordering = ("order", "-created_at")
+        verbose_name_plural = "Success stories"

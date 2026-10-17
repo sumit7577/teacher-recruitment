@@ -8,7 +8,7 @@ be found by form spam within a week of going live.
 
 from rest_framework import serializers
 
-from cms.models import Enquiry, Page, ProcessStep, Service, SiteSetting, TeamMember, Testimonial
+from cms.models import Enquiry, Faq, Page, ProcessStep, Service, SiteSetting, SuccessStory, TeamMember, Testimonial
 from user.serializer import PhoneField
 
 
@@ -172,3 +172,26 @@ class EnquiryReadSerializer(serializers.ModelSerializer):
 
     def get_cv(self, obj):
         return obj.cv.url if obj.cv else ""
+
+
+class FaqSerializer(serializers.ModelSerializer):
+    audience_label = serializers.CharField(source="get_audience_display", read_only=True)
+
+    class Meta:
+        model = Faq
+        fields = ("id", "question", "answer", "audience", "audience_label", "order", "is_published")
+
+
+class SuccessStorySerializer(serializers.ModelSerializer):
+    post_label = serializers.CharField(source="get_teacher_post_display", read_only=True)
+    photo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SuccessStory
+        fields = (
+            "id", "headline", "body", "teacher_name", "teacher_post", "post_label",
+            "institution_name", "city", "days_to_place", "photo", "order", "is_published",
+        )
+
+    def get_photo(self, obj):
+        return obj.photo.url if obj.photo else ""

@@ -14,4 +14,8 @@ urlpatterns = [
     path("team/<pid:pk>/", views.PanelTeamDetail.as_view(), name="panel-team-member"),
     path("testimonials/", views.PanelTestimonialList.as_view(), name="panel-testimonials"),
     path("testimonials/<pid:pk>/", views.PanelTestimonialDetail.as_view(), name="panel-testimonial"),
+    path("faqs/", views.PanelFaqList.as_view(), name="panel-faqs"),
+    path("faqs/<pid:pk>/", views.PanelFaqDetail.as_view(), name="panel-faq"),
+    path("stories/", views.PanelStoryList.as_view(), name="panel-stories"),
+    path("stories/<pid:pk>/", views.PanelStoryDetail.as_view(), name="panel-story"),
 ]
